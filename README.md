@@ -96,7 +96,7 @@ cd frontend
 npm run dev
 ```
 
-- Open your browser to http://localhost:5173. Use the app to rename the clusters (e.g., "Adam", "Sarah") and click Export Named Clusters.
+- Open your browser to http://localhost:5173. Use the app to rename the clusters (e.g., "Abderrahmene", "Mohamed") and click Export Named Clusters.
 
 3. Train the Model
 
