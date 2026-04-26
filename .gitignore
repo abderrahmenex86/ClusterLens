@@ -1,0 +1,17 @@
+.DS_Store
+__pycache__/
+*.pyc
+venv/
+
+*.db
+*.sqlite3
+*.pkl
+pending/
+named/
+originals/
+duplicates/
+archive/
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
