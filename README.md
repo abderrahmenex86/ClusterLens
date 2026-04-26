@@ -9,26 +9,23 @@ This project transforms a folder of random images into structured, named photo a
 The project is split into three decoupled microservices:
 
 1. Batch ELT Pipeline (CLI):
+    - Deduplication: Uses Perceptual Hashing (pHash) to find and remove duplicate images before processing.
 
-- Deduplication: Uses Perceptual Hashing (pHash) to find and remove duplicate images before processing.
+    - Perception: Uses InsightFace (ArcFace) to detect faces, align them, and extract 512-dimensional vector embeddings.
 
-- Perception: Uses InsightFace (ArcFace) to detect faces, align them, and extract 512-dimensional vector embeddings.
+    - Clustering: Uses HDBSCAN to group faces into clusters. It automatically discards blurry or hidden faces as "noise" (-1) to keep the folders clean.
 
-- Clustering: Uses HDBSCAN to group faces into clusters. It automatically discards blurry or hidden faces as "noise" (-1) to keep the folders clean.
-
-- Database: Saves all metadata to a local SQLite database so the heavy AI models only need to run once.
+    - Database: Saves all metadata to a local SQLite database so the heavy AI models only need to run once.
 
 2. Human-in-the-Loop Web App:
+    - Backend (FastAPI): A fast REST API that connects to the SQLite database. It uses thread-safe dependency injection to handle concurrent requests without locking the database.
 
-- Backend (FastAPI): A fast REST API that connects to the SQLite database. It uses thread-safe dependency injection to handle concurrent requests without locking the database.
-
-- Frontend (React): A user interface to review the clusters. It allows the user to easily rename clusters (e.g., "Person_4" to "Adam"), merge mistakes, and export the final albums.
+    - Frontend (React): A user interface to review the clusters. It allows the user to easily rename clusters (e.g., "Person_4" to "Adam"), merge mistakes, and export the final albums.
 
 3. Inference:
+    - Training: Trains an open-set Support Vector Machine (SVM) on the human-verified database.
 
-- Training: Trains an open-set Support Vector Machine (SVM) on the human-verified database.
-
-- Stream Processing: A watchdog script that looks at a pending/ folder, classifies new photos using the SVM, and routes them to the correct named albums.
+    - Stream Processing: A watchdog script that looks at a pending/ folder, classifies new photos using the SVM, and routes them to the correct named albums.
 
 ## 🚀 Key Technical Highlights
 
@@ -82,7 +79,7 @@ Create the following directory structure and put your unorginised photos inside 
 
 1. Run the Batch Pipeline
 
-This step will move duplicates to a separate folder, extract all faces, and perform the initial clustering.
+- This step will move duplicates to a separate folder, extract all faces, and perform the initial clustering.
 
 ```bash
 python cli/cli.py --input ~/pictures/dataset/originals --duplicates ~/pictures/dataset/duplicates --db ~/pictures/dataset/faces.db
