@@ -11,6 +11,7 @@ named/
 originals/
 duplicates/
 archive/
+data/
 
 frontend/node_modules/
 frontend/dist/
