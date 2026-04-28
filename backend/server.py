@@ -79,7 +79,11 @@ def list_clusters(
             display_name = f"Person_{c_id}"
 
         clusters.append(
-            {"cluster_id": c_id, "name": display_name, "face_count": r["face_count"]}
+            {
+                "cluster_id": c_id,
+                "name": display_name,
+                "face_count": r["face_count"],
+            }
         )
 
     return {"clusters": clusters}
@@ -117,7 +121,7 @@ def list_faces(
 @app.get("/api/faces/{face_id}/crop")
 def get_face_crop(
     face_id: int,
-    size: int = Query(220, ge=64, le=512),
+    size: int = Query(512, ge=64, le=512),
     conn: sqlite3.Connection = Depends(get_db),
     input_dir: Path = Depends(get_input_dir),
 ):
@@ -140,13 +144,20 @@ def get_face_crop(
                 min(img.height, int(box[3])),
             )
         )
+
+        # crop.thumbnail((size, size), Image.Resampling.LANCZOS)
+        #
+        # canvas = Image.new("RGB", (size, size))
+        # canvas.paste(
+        #     crop, ((size - crop.width) // 2, (size - crop.height) // 2)
+        # )
+        #
+        # buf = io.BytesIO()
+        # canvas.save(buf, format="JPEG", quality=85)
         crop.thumbnail((size, size), Image.Resampling.LANCZOS)
 
-        canvas = Image.new("RGB", (size, size), color=(0, 0, 0))
-        canvas.paste(crop, ((size - crop.width) // 2, (size - crop.height) // 2))
-
         buf = io.BytesIO()
-        canvas.save(buf, format="JPEG", quality=85)
+        crop.save(buf, format="JPEG", quality=85)
         buf.seek(0)
         return StreamingResponse(
             buf,
@@ -159,7 +170,9 @@ def get_face_crop(
 
 @app.put("/api/clusters/{cluster_id}/name")
 def rename_cluster(
-    cluster_id: int, payload: RenamePayload, conn: sqlite3.Connection = Depends(get_db)
+    cluster_id: int,
+    payload: RenamePayload,
+    conn: sqlite3.Connection = Depends(get_db),
 ):
     if cluster_id == -1:
         raise HTTPException(400, "Cannot rename Unknown (-1)")
@@ -168,15 +181,23 @@ def rename_cluster(
         (cluster_id, payload.name.strip()),
     )
     conn.commit()
-    return {"status": "success", "cluster_id": cluster_id, "name": payload.name.strip()}
+    return {
+        "status": "success",
+        "cluster_id": cluster_id,
+        "name": payload.name.strip(),
+    }
 
 
 @app.post("/api/clusters/merge")
-def merge_clusters(payload: MergePayload, conn: sqlite3.Connection = Depends(get_db)):
+def merge_clusters(
+    payload: MergePayload, conn: sqlite3.Connection = Depends(get_db)
+):
     if payload.src_id == payload.dst_id:
         raise HTTPException(400, "Cannot merge into itself")
     if payload.src_id == -1 or payload.dst_id == -1:
-        raise HTTPException(400, "Cannot merge the Unknown (-1) cluster directly")
+        raise HTTPException(
+            400, "Cannot merge the Unknown (-1) cluster directly"
+        )
 
     cursor = conn.execute(
         "UPDATE faces SET cluster_id = ? WHERE cluster_id = ?",
@@ -210,12 +231,19 @@ def export_named_albums(
         folder = (
             "Unknown"
             if r["cluster_id"] == -1
-            else (r["name"] if r["name"] else f"Unlabeled_Person_{r['cluster_id']}")
+            else (
+                r["name"]
+                if r["name"]
+                else f"Unlabeled_Person_{r['cluster_id']}"
+            )
         )
         target_dir = out_dir / folder
         target_dir.mkdir(exist_ok=True)
 
-        src, dst = input_dir / r["filename"], target_dir / Path(r["filename"]).name
+        src, dst = (
+            input_dir / r["filename"],
+            target_dir / Path(r["filename"]).name,
+        )
         if src.exists() and not dst.exists():
             try:
                 os.link(src, dst)
