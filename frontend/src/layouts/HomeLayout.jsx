@@ -71,84 +71,76 @@ const HomeLayout = () => {
     };
 
     return (
-        <div className='flex gap-8 h-[calc(100vh-6rem)] w-full p-8'>
+        <div className='flex h-[calc(100vh-6rem)] w-full gap-4 p-4'>
             <ClustersList clusters={clusters} />
 
             <Outlet />
 
-            <div className='flex-1 flex flex-col justify-end gap-8'>
-                <form
-                    onSubmit={handleMerge}
-                    className='flex flex-col justify-end gap-2'>
-                    <label
-                        htmlFor='old'
-                        className='text-sm text-walnut-500 font-semibold'>
-                        Source Cluster ID
-                    </label>
-                    <input
-                        id='old'
-                        value={clusterId || 'None Selected'}
-                        disabled
-                        className='p-2 w-full rounded-lg ring-2 ring-walnut-500 ring-inset cursor-not-allowed bg-gray-100'
-                    />
+            <div className='flex w-64 flex-col justify-between text-xs'>
+                <h1 className='w-full rounded-lg bg-slate-900 py-1 text-center text-lg font-semibold text-white'>
+                    Actions
+                </h1>
+                <div className='flex flex-col'>
+                    <form
+                        onSubmit={handleMerge}
+                        className='flex flex-col justify-end gap-2 border-b border-slate-900 pb-4'>
+                        <input
+                            id='old'
+                            value={clusterId || 'None Selected'}
+                            disabled
+                            className='border-inset w-full cursor-not-allowed rounded-lg border border-slate-900 bg-gray-300 p-2'
+                        />
 
-                    <label
-                        htmlFor='new'
-                        className='text-sm text-walnut-500 font-semibold'>
-                        Target Cluster ID
-                    </label>
-                    <input
-                        id='new'
-                        type='number'
-                        value={targetClusterId}
-                        onChange={(e) => setTargetClusterId(e.target.value)}
-                        placeholder='e.g. 5'
-                        className='p-2 w-full rounded-lg ring-2 ring-walnut-500 ring-inset'
-                    />
+                        <input
+                            id='new'
+                            type='number'
+                            value={targetClusterId}
+                            onChange={(e) => setTargetClusterId(e.target.value)}
+                            placeholder='New Cluster ID'
+                            className='border-inset w-full rounded-lg border border-slate-900 p-2'
+                        />
 
-                    <button
-                        type='submit'
-                        disabled={!clusterId}
-                        className='flex justify-center items-center w-full px-8 py-2 rounded-lg bg-walnut-500 hover:bg-walnut-600 text-white disabled:opacity-50 cursor-pointer'>
-                        Merge
-                    </button>
-                </form>
+                        <button
+                            type='submit'
+                            disabled={!clusterId}
+                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-red-600 px-8 py-2 text-white disabled:opacity-50'>
+                            Merge
+                        </button>
+                    </form>
 
-                <form
-                    onSubmit={handleRename}
-                    className='flex flex-col justify-end gap-2'>
-                    <label
-                        htmlFor='name'
-                        className='text-sm text-walnut-500 font-semibold'>
-                        New Name
-                    </label>
-                    <input
-                        id='name'
-                        type='text'
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        placeholder='e.g. Adam'
-                        className='p-2 w-full rounded-lg ring-2 ring-walnut-500 ring-inset'
-                    />
+                    <form
+                        onSubmit={handleRename}
+                        className='border-slalte-900 flex flex-col justify-end gap-2 border-b py-4'>
+                        <input
+                            id='name'
+                            type='text'
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            placeholder='e.g. Adam'
+                            className='border-inset w-full rounded-lg border border-slate-900 p-2'
+                        />
 
-                    <button
-                        type='submit'
-                        disabled={!clusterId}
-                        className='flex justify-center items-center w-full px-8 py-2 rounded-lg bg-walnut-500 hover:bg-walnut-600 text-white disabled:opacity-50 cursor-pointer'>
-                        Rename
-                    </button>
-                </form>
+                        <button
+                            type='submit'
+                            disabled={!clusterId}
+                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-8 py-2 text-white disabled:opacity-50'>
+                            Rename
+                        </button>
+                    </form>
 
-                <form
-                    onSubmit={handleExport}
-                    className='flex flex-col justify-end gap-2'>
-                    <button
-                        type='submit'
-                        disabled={isExporting}
-                        className='flex justify-center items-center w-full px-8 py-2 rounded-lg bg-walnut-500 hover:bg-walnut-600 text-white disabled:opacity-50 cursor-pointer'>
-                        {isExporting ? 'Exporting...' : 'Export Named Clusters'}
-                    </button>
-                </form>
+                    <form
+                        onSubmit={handleExport}
+                        className='flex flex-col justify-end gap-2 pt-4'>
+                        <button
+                            type='submit'
+                            disabled={isExporting}
+                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-8 py-2 text-xs text-white disabled:opacity-50'>
+                            {isExporting ?
+                                'Exporting...'
+                            :   'Export Named Clusters'}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );
