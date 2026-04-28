@@ -1,41 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Borel&family=Kodchasan:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
 @import 'tailwindcss';
 
 @theme {
-    --font-main: 'Kodchasan', 'sans-serif';
-    --font-body: 'Borel', 'cursive';
+    --font-main: 'Quicksand', 'sans-serif';
 
-    --color-walnut-50: oklch(96.98% 0.023 71.79);
-    --color-walnut-100: oklch(93.86% 0.044 68.35);
-    --color-walnut-200: oklch(88.2% 0.088 68.49);
-    --color-walnut-300: oklch(82.77% 0.129 66.17);
-    --color-walnut-400: oklch(77.88% 0.162 61.92);
-    --color-walnut-500: oklch(73.8% 0.183 54.69);
-    --color-walnut-600: oklch(62.49% 0.155 55.06);
-    --color-walnut-700: oklch(50.81% 0.124 56.37);
-    --color-walnut-800: oklch(38.41% 0.091 58.93);
-    --color-walnut-900: oklch(24.71% 0.056 63.84);
-    --color-walnut-950: oklch(20.33% 0.045 67.17);
-    --color-dark-garnet-50: oklch(94.3% 0.029 17.67);
-    --color-dark-garnet-100: oklch(88.97% 0.058 18.3);
-    --color-dark-garnet-200: oklch(78.84% 0.123 20.19);
-    --color-dark-garnet-300: oklch(70.44% 0.187 23.19);
-    --color-dark-garnet-400: oklch(64.89% 0.237 26.97);
-    --color-dark-garnet-500: oklch(62.8% 0.258 29.23);
-    --color-dark-garnet-600: oklch(53.08% 0.218 29.23);
-    --color-dark-garnet-700: oklch(42.89% 0.176 29.23);
-    --color-dark-garnet-800: oklch(32.04% 0.131 29.23);
-    --color-dark-garnet-900: oklch(20.16% 0.083 29.23);
-    --color-dark-garnet-950: oklch(16.35% 0.067 29.23);
-    --color-bright-indigo-50: oklch(93.61% 0.03 281.67);
-    --color-bright-indigo-100: oklch(87.47% 0.059 280.91);
-    --color-bright-indigo-200: oklch(74.77% 0.125 279.39);
-    --color-bright-indigo-300: oklch(62.74% 0.193 275.42);
-    --color-bright-indigo-400: oklch(52.26% 0.254 270.04);
-    --color-bright-indigo-500: oklch(45.45% 0.295 264.79);
-    --color-bright-indigo-600: oklch(38.65% 0.248 264.96);
-    --color-bright-indigo-700: oklch(31.56% 0.199 265.2);
-    --color-bright-indigo-800: oklch(23.99% 0.145 266.01);
-    --color-bright-indigo-900: oklch(16.12% 0.085 266.84);
-    --color-bright-indigo-950: oklch(13.3% 0.066 266.09);
+    --color-indigo-50: oklch(94.04% 0.026 288.32);
+    --color-indigo-100: oklch(87.78% 0.054 287.59);
+    --color-indigo-200: oklch(75.71% 0.108 285.91);
+    --color-indigo-300: oklch(63.6% 0.168 282.88);
+    --color-indigo-400: oklch(52.38% 0.224 277.65);
+    --color-indigo-500: oklch(43.74% 0.264 269.72);
+    --color-indigo-600: oklch(37.36% 0.222 270.3);
+    --color-indigo-700: oklch(30.69% 0.177 271.28);
+    --color-indigo-800: oklch(23.73% 0.128 273.12);
+    --color-indigo-900: oklch(16.21% 0.076 276.57);
+    --color-indigo-950: oklch(13.64% 0.058 280.22);
 }
