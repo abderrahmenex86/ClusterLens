@@ -1,28 +1,20 @@
 import {
     Outlet,
     useLoaderData,
+    useLocation,
     useParams,
     useNavigate,
     useRevalidator,
 } from 'react-router';
 import { useState } from 'react';
-import {
-    listClusters,
-    renameCluster,
-    mergeClusters,
-    exportNamedAlbums,
-} from '../api';
+import { renameCluster, mergeClusters, exportNamedAlbums } from '../api';
 import ClustersList from '../components/ClustersList';
-
-export const clustersLoader = async () => {
-    const data = await listClusters();
-    return data.clusters;
-};
 
 const HomeLayout = () => {
     const clusters = useLoaderData();
     const { clusterId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const revalidator = useRevalidator();
 
     const [newName, setNewName] = useState('');
@@ -51,7 +43,13 @@ const HomeLayout = () => {
         try {
             await mergeClusters(clusterId, parseInt(targetClusterId, 10));
             setTargetClusterId('');
-            navigate('/', { replace: true });
+            navigate(
+                {
+                    pathname: '/',
+                    search: location.search,
+                },
+                { replace: true }
+            );
         } catch (err) {
             alert(err.message);
         }
@@ -71,12 +69,12 @@ const HomeLayout = () => {
     };
 
     return (
-        <div className='flex h-[calc(100vh-6rem)] w-full gap-4 p-4'>
+        <div className='flex h-full min-h-0 w-full gap-4 p-4'>
             <ClustersList clusters={clusters} />
 
             <Outlet />
 
-            <div className='flex w-64 flex-col justify-between text-xs'>
+            <div className='flex w-64 flex-col gap-4 text-xs'>
                 <h1 className='w-full rounded-lg bg-slate-900 py-1 text-center text-lg font-semibold text-white'>
                     Actions
                 </h1>
@@ -103,7 +101,7 @@ const HomeLayout = () => {
                         <button
                             type='submit'
                             disabled={!clusterId}
-                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-red-600 px-8 py-2 text-white disabled:opacity-50'>
+                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-red-600 px-8 py-2 text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50'>
                             Merge
                         </button>
                     </form>
@@ -123,7 +121,7 @@ const HomeLayout = () => {
                         <button
                             type='submit'
                             disabled={!clusterId}
-                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-8 py-2 text-white disabled:opacity-50'>
+                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-8 py-2 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50'>
                             Rename
                         </button>
                     </form>
@@ -134,7 +132,7 @@ const HomeLayout = () => {
                         <button
                             type='submit'
                             disabled={isExporting}
-                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-8 py-2 text-xs text-white disabled:opacity-50'>
+                            className='flex w-full cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-8 py-2 text-xs text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50'>
                             {isExporting ?
                                 'Exporting...'
                             :   'Export Named Clusters'}

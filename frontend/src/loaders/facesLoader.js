@@ -1,6 +1,6 @@
-import { listClusters } from '../api';
+import { listFaces } from '../api';
 
-const CLUSTERS_PAGE_SIZE = 50;
+const FACES_PAGE_SIZE = 60;
 
 const parsePositiveInteger = (value, fallback) => {
     const parsedValue = Number.parseInt(value ?? '', 10);
@@ -10,12 +10,12 @@ const parsePositiveInteger = (value, fallback) => {
         :   fallback;
 };
 
-export const clustersLoader = async ({ request }) => {
+export const facesLoader = async ({ params, request }) => {
     const requestUrl = new URL(request.url);
     const limit = parsePositiveInteger(
-        requestUrl.searchParams.get('clustersLimit'),
-        CLUSTERS_PAGE_SIZE
+        requestUrl.searchParams.get('facesLimit'),
+        FACES_PAGE_SIZE
     );
-    const data = await listClusters(limit, 0);
-    return data.clusters;
+    const data = await listFaces(params.clusterId, limit, 0);
+    return data.faces;
 };

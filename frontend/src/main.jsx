@@ -3,9 +3,11 @@ import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
 import GlobalLayout from './layouts/GlobalLayout.jsx';
-import HomeLayout, { clustersLoader } from './layouts/HomeLayout';
+import HomeLayout from './layouts/HomeLayout';
+import { clustersLoader } from './loaders/clustersLoader';
 
-import FacesGrid, { facesLoader } from './components/FacesGrid';
+import FacesGrid from './components/FacesGrid';
+import { facesLoader } from './loaders/facesLoader';
 import EmptyGrid from './components/EmptyGrid';
 
 import AboutComponent from './components/AboutComponent';

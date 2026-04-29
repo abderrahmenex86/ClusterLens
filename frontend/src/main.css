@@ -1,18 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap");
+@import "tailwindcss";
 
 @theme {
-    --font-main: 'Quicksand', 'sans-serif';
+  --font-main: "Quicksand", "sans-serif";
 
-    --color-indigo-50: oklch(94.04% 0.026 288.32);
-    --color-indigo-100: oklch(87.78% 0.054 287.59);
-    --color-indigo-200: oklch(75.71% 0.108 285.91);
-    --color-indigo-300: oklch(63.6% 0.168 282.88);
-    --color-indigo-400: oklch(52.38% 0.224 277.65);
-    --color-indigo-500: oklch(43.74% 0.264 269.72);
-    --color-indigo-600: oklch(37.36% 0.222 270.3);
-    --color-indigo-700: oklch(30.69% 0.177 271.28);
-    --color-indigo-800: oklch(23.73% 0.128 273.12);
-    --color-indigo-900: oklch(16.21% 0.076 276.57);
-    --color-indigo-950: oklch(13.64% 0.058 280.22);
+  --color-indigo-50: oklch(94.04% 0.026 288.32);
+  --color-indigo-100: oklch(87.78% 0.054 287.59);
+  --color-indigo-200: oklch(75.71% 0.108 285.91);
+  --color-indigo-300: oklch(63.6% 0.168 282.88);
+  --color-indigo-400: oklch(52.38% 0.224 277.65);
+  --color-indigo-500: oklch(43.74% 0.264 269.72);
+  --color-indigo-600: oklch(37.36% 0.222 270.3);
+  --color-indigo-700: oklch(30.69% 0.177 271.28);
+  --color-indigo-800: oklch(23.73% 0.128 273.12);
+  --color-indigo-900: oklch(16.21% 0.076 276.57);
+  --color-indigo-950: oklch(13.64% 0.058 280.22);
 }

@@ -1,20 +1,50 @@
-import { useRouteLoaderData, useParams, useLoaderData } from 'react-router';
-import { listFaces, getFaceCropUrl } from '../api';
+import {
+    useLoaderData,
+    useNavigation,
+    useParams,
+    useRouteLoaderData,
+    useSearchParams,
+} from 'react-router';
+import { getFaceCropUrl } from '../api';
 
-const facesLoader = async ({ params }) => {
-    const data = await listFaces(params.clusterId);
-    return data.faces;
+const FACES_PAGE_SIZE = 60;
+
+const parsePositiveInteger = (value, fallback) => {
+    const parsedValue = Number.parseInt(value ?? '', 10);
+
+    return Number.isFinite(parsedValue) && parsedValue > 0 ?
+            parsedValue
+        :   fallback;
 };
 
 const FacesGrid = () => {
     const faces = useLoaderData();
     const clusters = useRouteLoaderData('home');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigation = useNavigation();
 
     const { clusterId } = useParams();
+
+    const currentLimit = parsePositiveInteger(
+        searchParams.get('facesLimit'),
+        FACES_PAGE_SIZE
+    );
+    const canLoadMore = faces.length >= currentLimit;
 
     const selectedCluster = clusters.find(
         (c) => c.cluster_id === Number(clusterId)
     );
+
+    const handleLoadMore = () => {
+        const nextSearchParams = new URLSearchParams(searchParams);
+        nextSearchParams.set(
+            'facesLimit',
+            String(currentLimit + FACES_PAGE_SIZE)
+        );
+
+        setSearchParams(nextSearchParams, { replace: true });
+    };
+
     return (
         <div className='flex flex-1 flex-col gap-4'>
             <div className='flex items-baseline justify-between rounded-lg bg-slate-900 px-4 py-1 text-lg font-semibold text-white'>
@@ -38,9 +68,20 @@ const FacesGrid = () => {
                     );
                 })}
             </div>
+            <button
+                type='button'
+                onClick={handleLoadMore}
+                disabled={!canLoadMore || navigation.state !== 'idle'}
+                className={[
+                    'w-full rounded-lg bg-slate-900 py-1 text-center text-lg text-white',
+                    !canLoadMore || navigation.state !== 'idle' ?
+                        'cursor-not-allowed opacity-60'
+                    :   'hover:bg-slate-700',
+                ].join(' ')}>
+                Load More
+            </button>
         </div>
     );
 };
 
-export { facesLoader };
 export default FacesGrid;
