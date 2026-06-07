@@ -1,115 +1,104 @@
-# ClusterLens: Intelligent Photos Organizer
+# ClusterLens
 
-An end-to-end Machine Learning pipeline and web application that automatically organizes messy, unlabeled photo collections by the people in them.
+<div align="center">
+  <p>
+    <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch" />
+    <img src="https://img.shields.io/badge/scikit_learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white" alt="Scikit-Learn" />
+    <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+    <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  </p>
+</div>
 
-This project transforms a folder of random images into structured, named photo albums. It uses deep learning for face extraction, density-based clustering to group similar faces, a web UI for human review, and a Support Vector Machine (SVM) to learn and sort future photos automatically.
+ClusterLens is an end-to-end Machine Learning pipeline and web application designed to automatically organize messy, unlabeled photo collections by the people in them.
 
-## ⚙️ System Architecture
+## Features
 
-The project is split into three separate services:
+- **Batch Perception Pipeline**: Deduplicates source images using Perceptual Hashing (pHash) and extracts 512-dimensional normalized face embeddings via the InsightFace `buffalo_l` model.
+- **Density-Based Clustering**: Automatically groups faces using HDBSCAN, isolating blurred, dynamic, or occluded faces as noise ($1$) to maintain clean, high-confidence clusters.
+- **Human-in-the-Loop Curation**: Features a responsive React user interface allowing users to rename generated folders, resolve identity merges, and export final named albums.
+- **Open-Set Inference Classifiers**: Fits a Support Vector Machine (SVM) on human-verified data to automatically sort and route future photos into their corresponding target directories.
+- **Zero-Cost Storage System**: Leverages filesystem hard links to construct physical named folders without consuming additional disk space.
+- **Separation of Concerns**: Decouples the computationally heavy extraction/clustering batch tasks from the REST API to ensure memory stability and prevent web requests from timing out.
 
-1. Batch ELT Pipeline (CLI):
-    - Deduplication: Uses Perceptual Hashing (pHash) to find and remove duplicate images before processing.
+## Tech Stack
 
-    - Perception: Uses Insightface buffalo_l model to detect faces, align them, and extract 512-dimensional normalized vector embeddings.
+- **Machine Learning:** PyTorch, InsightFace (`buffalo_l`), HDBSCAN, Scikit-Learn (SVM), ImageHash
+- **Backend Framework:** FastAPI, SQLAlchemy, SQLite
+- **Frontend Framework:** ReactJS, Vite
+- **Styling:** Tailwind CSS
 
-    - Clustering: Uses HDBSCAN to group faces into clusters. It automatically discards blurry or hidden faces as "noise" (-1) to keep the folders clean.
+## Getting Started
 
-    - Database: Saves all metadata to a local SQLite database so the heavy AI models only need to run once.
+### Prerequisites
+- Python (v3.10+)
+- Node.js (v18+)
+- Local directories configured for picture storage
 
-2. Human-in-the-Loop Web App:
-    - Backend (FastAPI): A fast REST API that connects to the SQLite database.
+### Directory Setup
 
-    - Frontend (React): A user interface to review the clusters. It allows the user to easily rename clusters (e.g., "Person_3" to "Mohamed"), merge mistakenly separated clusters, and export the final named albums.
-
-3. Inference:
-    - Training: Trains an open-set Support Vector Machine (SVM) on the **human-verified** database.
-
-    - Stream Processing: A script that looks at a **pending/** folder, classifies new photos using the SVM, and routes them to the correct named albums.
-
-## 🚀 Key Technical Highlights
-
-- Zero-Cost Storage (Hard Linking): Creating the final photo albums takes zero extra disk space.
-
-- Separation of Concerns: The heavy Machine Learning tasks (which depending on the size of the dataset can take anywhere from minutes to hours) are completely separated from the REST API to prevent HTTP timeouts and memory crashes.
-
-## 📁 Directory Structure
-
+Create the following directory layout on your system:
 ```text
-├── cli/
-│ ├── cli.py                # Batch pipeline (Deduplicate, Extract & Cluster)
-│ ├── train_svm.py          # Trains the classifier on named faces
-│ └── process_pending.py    # Sorts new photos automatically
-├── backend/                # FastAPI Backend
-├── frontend/               # React Frontend
-├── requirements.txt        # Python dependencies
-└── README.md
+~/pictures/dataset/
+├── originals/      <-- Place your unstructured photos here
+├── duplicates/     <-- Deduplicated files will be moved here
+├── pending/        <-- Future photos for automatic sorting
+└── named/          <-- Physical albums structured by identity
 ```
 
-## 🛠️ Installation & Setup
+### Installation
 
-1. Install Python dependencies:
+1. **Clone the repository:**
+```bash
+git clone https://github.com/abderrahmenex86/ClusterLens.git
+cd ClusterLens
+```
 
+2. **Install Python dependencies:**
 ```bash
 virtualenv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-2. Install Frontend dependencies:
-
+3. **Install Frontend dependencies:**
 ```bash
 cd frontend
 npm install
 ```
 
-3. Prepare your data folders:
+---
 
-Create the following directory structure and put your unorginised photos inside originals/.
+## How to Use It
 
-```text
-~/pictures/dataset/
-├── originals/      <-- Put your photos here
-├── duplicates/
-├── pending/
-└── named/
-```
-
-## 💻 How to Use It
-
-1. Run the Batch Pipeline
-
-- This step will move duplicates to a separate folder, extract all faces, and perform the initial clustering.
-
+### 1. Run the Batch Pipeline
+Process, deduplicate, and extract initial facial clusters from your raw photos folder:
 ```bash
 python cli/cli.py --input ~/pictures/dataset/originals --duplicates ~/pictures/dataset/duplicates --db ~/pictures/dataset/faces.db
 ```
 
-2. Start the Web App
+### 2. Start the Curation Web App
+Launch the backend and frontend development servers to review your clusters:
 
+*In Terminal 1:*
 ```bash
 python backend/server.py --db-file ~/pictures/dataset/faces.db --input-dir ~/pictures/dataset/originals
 ```
 
+*In Terminal 2:*
 ```bash
 cd frontend
 npm run dev
 ```
+Open your browser to `http://localhost:5173` to label clusters, verify alignments, and click **Export Named Clusters**.
 
-- Open your browser to http://localhost:5173. Use the app to rename the clusters (e.g., "Abderrahmene", "Mohamed") and click Export Named Clusters.
-
-3. Train the Model
-
-- Now that you have labeled the data, train the SVM classifier.
-
+### 3. Train the Classifier
+Once identities have been verified and named, train the SVM classifier:
 ```bash
 python cli/train_svm.py --db ~/pictures/dataset/faces.db --model-out ~/pictures/dataset/face_svm.pkl
 ```
 
-4. Process Future Photos
-
-- Whenever you take new photos, put them in the \~/pictures/dataset/pending/ folder. Then, run the inference script to automatically sort them:
-
+### 4. Process Incoming Photos
+Drop future photos into your `pending/` directory and run the classification runner to sort them using your newly trained SVM weights:
 ```bash
 python cli/process_pending.py --pending ~/pictures/dataset/pending --named ~/pictures/dataset/named --archive ~/pictures/dataset/originals --model ~/pictures/dataset/face_svm.pkl
 ```
