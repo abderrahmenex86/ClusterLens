@@ -1,4 +1,4 @@
-# AI Face Organizer & Clusterer
+# ClusterLens: Intelligent Photos Organizer
 
 An end-to-end Machine Learning pipeline and web application that automatically organizes messy, unlabeled photo collections by the people in them.
 
@@ -6,26 +6,26 @@ This project transforms a folder of random images into structured, named photo a
 
 ## ⚙️ System Architecture
 
-The project is split into three decoupled microservices:
+The project is split into three separate services:
 
 1. Batch ELT Pipeline (CLI):
     - Deduplication: Uses Perceptual Hashing (pHash) to find and remove duplicate images before processing.
 
-    - Perception: Uses InsightFace (ArcFace) to detect faces, align them, and extract 512-dimensional vector embeddings.
+    - Perception: Uses Insightface buffalo_l model to detect faces, align them, and extract 512-dimensional normalized vector embeddings.
 
     - Clustering: Uses HDBSCAN to group faces into clusters. It automatically discards blurry or hidden faces as "noise" (-1) to keep the folders clean.
 
     - Database: Saves all metadata to a local SQLite database so the heavy AI models only need to run once.
 
 2. Human-in-the-Loop Web App:
-    - Backend (FastAPI): A fast REST API that connects to the SQLite database. It uses thread-safe dependency injection to handle concurrent requests without locking the database.
+    - Backend (FastAPI): A fast REST API that connects to the SQLite database.
 
-    - Frontend (React): A user interface to review the clusters. It allows the user to easily rename clusters (e.g., "Person_4" to "Adam"), merge mistakes, and export the final albums.
+    - Frontend (React): A user interface to review the clusters. It allows the user to easily rename clusters (e.g., "Person_3" to "Mohamed"), merge mistakenly separated clusters, and export the final named albums.
 
 3. Inference:
-    - Training: Trains an open-set Support Vector Machine (SVM) on the human-verified database.
+    - Training: Trains an open-set Support Vector Machine (SVM) on the **human-verified** database.
 
-    - Stream Processing: A watchdog script that looks at a pending/ folder, classifies new photos using the SVM, and routes them to the correct named albums.
+    - Stream Processing: A script that looks at a **pending/** folder, classifies new photos using the SVM, and routes them to the correct named albums.
 
 ## 🚀 Key Technical Highlights
 
