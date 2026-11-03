@@ -22,7 +22,7 @@ them as albums.
 You need Python 3.10+ and Node 18+.
 
 ```bash
-git clone https://github.com/abderrahmenex86/face-clusterer
+git clone https://github.com/abderrahmenex86/ClusterLens
 cd ClusterLens
 
 python -m venv venv
