@@ -1,104 +1,80 @@
 # ClusterLens
 
-<div align="center">
-  <p>
-    <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch" />
-    <img src="https://img.shields.io/badge/scikit_learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white" alt="Scikit-Learn" />
-    <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
-    <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-  </p>
-</div>
+Sorts an unlabelled photo collection into folders by the people in it. It finds
+faces, groups them by identity, and lets you name the groups before exporting
+them as albums.
 
-ClusterLens is an end-to-end Machine Learning pipeline and web application designed to automatically organize messy, unlabeled photo collections by the people in them.
+## What it does
 
-## Features
+- Deduplicates source images with perceptual hashing, then extracts face
+  embeddings with InsightFace `buffalo_l`.
+- Groups faces with HDBSCAN, which leaves blurred, occluded, and background faces
+  as noise instead of forcing them into a cluster.
+- Opens a React interface for renaming clusters, merging identities that were
+  split, and exporting the result.
+- Fits an SVM on the identities you confirmed, so new photos can be routed into
+  existing folders without clustering the whole library again.
+- Builds the named folders from hard links, so exporting a collection costs no
+  extra disk space.
 
-- **Batch Perception Pipeline**: Deduplicates source images using Perceptual Hashing (pHash) and extracts 512-dimensional normalized face embeddings via the InsightFace `buffalo_l` model.
-- **Density-Based Clustering**: Automatically groups faces using HDBSCAN, isolating blurred, dynamic, or occluded faces as noise ($1$) to maintain clean, high-confidence clusters.
-- **Human-in-the-Loop Curation**: Features a responsive React user interface allowing users to rename generated folders, resolve identity merges, and export final named albums.
-- **Open-Set Inference Classifiers**: Fits a Support Vector Machine (SVM) on human-verified data to automatically sort and route future photos into their corresponding target directories.
-- **Zero-Cost Storage System**: Leverages filesystem hard links to construct physical named folders without consuming additional disk space.
-- **Separation of Concerns**: Decouples the computationally heavy extraction/clustering batch tasks from the REST API to ensure memory stability and prevent web requests from timing out.
+## Run it
 
-## Tech Stack
+You need Python 3.10+ and Node 18+.
 
-- **Machine Learning:** PyTorch, InsightFace (`buffalo_l`), HDBSCAN, Scikit-Learn (SVM), ImageHash
-- **Backend Framework:** FastAPI, SQLAlchemy, SQLite
-- **Frontend Framework:** ReactJS, Vite
-- **Styling:** Tailwind CSS
-
-## Getting Started
-
-### Prerequisites
-- Python (v3.10+)
-- Node.js (v18+)
-- Local directories configured for picture storage
-
-### Directory Setup
-
-Create the following directory layout on your system:
-```text
-~/pictures/dataset/
-├── originals/      <-- Place your unstructured photos here
-├── duplicates/     <-- Deduplicated files will be moved here
-├── pending/        <-- Future photos for automatic sorting
-└── named/          <-- Physical albums structured by identity
-```
-
-### Installation
-
-1. **Clone the repository:**
 ```bash
-git clone https://github.com/abderrahmenex86/ClusterLens.git
+git clone https://github.com/abderrahmeneex86/ClusterLens
 cd ClusterLens
-```
 
-2. **Install Python dependencies:**
-```bash
-virtualenv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. **Install Frontend dependencies:**
+Sort a folder of photos:
+
 ```bash
-cd frontend
-npm install
+python main.py \
+  --input  /path/to/mixed-photos \
+  --duplicates /path/to/duplicates \
+  --output /path/to/albums \
+  --db faces.db
 ```
 
----
+Optional flags: `--hash-threshold` for pHash deduplication tolerance,
+`--min-cluster` (default 4) for the smallest group that counts as a person, and
+`--min-samples` for how aggressively HDBSCAN discards noise.
 
-## How to Use It
+Start the backend and the interface:
 
-### 1. Run the Batch Pipeline
-Process, deduplicate, and extract initial facial clusters from your raw photos folder:
 ```bash
-python cli/cli.py --input ~/pictures/dataset/originals --duplicates ~/pictures/dataset/duplicates --db ~/pictures/dataset/faces.db
+python backend/server.py --db-file faces.db --input-dir /path/to/albums --port 8000
+npm --prefix frontend run dev
 ```
 
-### 2. Start the Curation Web App
-Launch the backend and frontend development servers to review your clusters:
+The interface reads the same database the batch job wrote.
 
-*In Terminal 1:*
-```bash
-python backend/server.py --db-file ~/pictures/dataset/faces.db --input-dir ~/pictures/dataset/originals
-```
+## How it works
 
-*In Terminal 2:*
-```bash
-cd frontend
-npm run dev
-```
-Open your browser to `http://localhost:5173` to label clusters, verify alignments, and click **Export Named Clusters**.
+Detection and embedding happen once, in a batch, so a large import cannot time
+out inside a request. The cluster ID becomes the unit the interface works with:
+renaming writes a label, merging joins two clusters, and confirming an identity
+trains the SVM. Export walks the confirmed clusters and links each matching file
+into the output directory.
 
-### 3. Train the Classifier
-Once identities have been verified and named, train the SVM classifier:
-```bash
-python cli/train_svm.py --db ~/pictures/dataset/faces.db --model-out ~/pictures/dataset/face_svm.pkl
-```
+The SQLite database stores image paths, face embeddings, and cluster
+assignments. It does not store image bytes, so the library never grows beyond the
+photo folder.
 
-### 4. Process Incoming Photos
-Drop future photos into your `pending/` directory and run the classification runner to sort them using your newly trained SVM weights:
-```bash
-python cli/process_pending.py --pending ~/pictures/dataset/pending --named ~/pictures/dataset/named --archive ~/pictures/dataset/originals --model ~/pictures/dataset/face_svm.pkl
-```
+## Limits
+
+- Faces are grouped by embedding distance, so one person photographed at very
+  different ages or angles can end up in two clusters. Merging is manual.
+- The SVM only helps for people you have already confirmed. A stranger becomes a
+  new cluster.
+- Hard links stay within one filesystem. Exporting to another drive copies the
+  files instead.
+
+## Stack
+
+PyTorch · InsightFace · imagededup · HDBSCAN · scikit-learn · FastAPI · SQLite ·
+React · Vite · Tailwind CSS
