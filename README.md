@@ -2,7 +2,7 @@
 
 A local-first smart gallery for a recovered photo archive. It reads the EXIF that survived, reconstructs the people and documents from the pixels, and keeps every source folder read-only.
 
-![Documents view with a receipt, a code screenshot, an intake form, and a whiteboard](docs/screenshots/documents.png)
+![People page with five CelebA identity cards and face counts; the faces are blurred](docs/screenshots/people.png)
 
 ## What it does
 
@@ -12,7 +12,7 @@ A local-first smart gallery for a recovered photo archive. It reads the EXIF tha
 - Exports full-photo copies into `People/<name>/`, `People/Unsorted/`, `Documents/<type>/`, and `Unknown/`, with a manifest for every copy.
 - Keeps indexing progress, failures, and job history in a bottom-left status dock, so the gallery stays edge-to-edge.
 
-![People page with five CelebA identity cards and face counts; the faces are blurred](docs/screenshots/people.png)
+![Documents view with a receipt, a code screenshot, an intake form, and a whiteboard](docs/screenshots/documents.png)
 
 ## Run it
 
