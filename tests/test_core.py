@@ -17,6 +17,9 @@ class StubContext:
         self.payload = payload
         self.messages: list[str] = []
 
+    def set_total(self, total, unit=None):
+        return None
+
     def progress(self, current=None, total=None, message=None):
         if message:
             self.messages.append(message)
