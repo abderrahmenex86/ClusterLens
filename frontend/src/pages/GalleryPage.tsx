@@ -1,17 +1,19 @@
 import { Filter, ImageOff, Loader2, Plus, Search, Sparkles, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { api, ApiError, type ImageSummary } from '@/lib/api';
 import { usePeople, useSources, useStats } from '@/lib/hooks';
-import { Badge, Button, Skeleton } from '@/components/ui';
+import { Badge, Button, Input, Skeleton } from '@/components/ui';
 import { EmptyState, ImageTile, PageHeader } from '@/components/common';
 
 const PAGE_SIZE = 60;
 
 export function GalleryPage() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const { data: stats } = useStats();
+    const [mobileQuery, setMobileQuery] = useState('');
     const { data: people } = usePeople();
     const { data: sources } = useSources();
     const [limit, setLimit] = useState(PAGE_SIZE);
@@ -40,6 +42,7 @@ export function GalleryPage() {
 
     useEffect(() => {
         setLimit(PAGE_SIZE);
+        setMobileQuery(q);
     }, [q, personId, scene, year, sourceId, unsorted]);
 
     const [items, setItems] = useState<ImageSummary[]>([]);
@@ -142,6 +145,29 @@ export function GalleryPage() {
                     </>
                 }
             />
+
+            <form
+                className='px-6 pb-4 md:hidden'
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    const value = mobileQuery.trim();
+                    navigate(value ? `/?q=${encodeURIComponent(value)}` : '/');
+                }}
+            >
+                <div className='relative'>
+                    <Search
+                        size={15}
+                        className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted'
+                    />
+                    <Input
+                        value={mobileQuery}
+                        onChange={(event) => setMobileQuery(event.target.value)}
+                        placeholder='Search your library…'
+                        aria-label='Search your library'
+                        className='pl-9'
+                    />
+                </div>
+            </form>
 
             {hasFilters && (
                 <div className='flex flex-wrap items-center gap-2 px-6 pb-5'>

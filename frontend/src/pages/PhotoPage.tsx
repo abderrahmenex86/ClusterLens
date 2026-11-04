@@ -85,12 +85,12 @@ export function PhotoPage() {
         }
     }
 
-    async function createAndAssign() {
-        if (!selectedFace || !newName.trim()) return;
+    async function createPersonAndAssign(name: string) {
+        if (!selectedFace || !name.trim()) return;
         setBusy(true);
         try {
-            await api.createPerson(newName.trim(), [selectedFace.id]);
-            toast.success(`Created ${newName.trim()}`);
+            await api.createPerson(name.trim(), [selectedFace.id]);
+            toast.success(`Created ${name.trim()}`);
             setNewName('');
             await Promise.all([refetch(), refetchPeople()]);
         } catch (reason) {
@@ -98,6 +98,11 @@ export function PhotoPage() {
         } finally {
             setBusy(false);
         }
+    }
+
+    async function createAndAssign() {
+        if (!newName.trim()) return;
+        await createPersonAndAssign(newName.trim());
     }
 
     async function markNotAFace() {
@@ -332,10 +337,7 @@ export function PhotoPage() {
                                         people={people?.items ?? []}
                                         excludeId={selectedFace.person?.id}
                                         onSelect={(person) => assignToPerson(person.id)}
-                                        onCreate={(name) => {
-                                            setNewName(name);
-                                            void createAndAssignWithName(name);
-                                        }}
+                                        onCreate={(name) => void createPersonAndAssign(name)}
                                         trigger={
                                             <Button variant='secondary' className='w-full justify-start' disabled={busy}>
                                                 <UserPlus size={15} />
@@ -430,19 +432,4 @@ export function PhotoPage() {
             </div>
         </div>
     );
-
-    async function createAndAssignWithName(name: string) {
-        if (!selectedFace) return;
-        setBusy(true);
-        try {
-            await api.createPerson(name, [selectedFace.id]);
-            toast.success(`Created ${name}`);
-            setNewName('');
-            await Promise.all([refetch(), refetchPeople()]);
-        } catch (reason) {
-            toast.error(reason instanceof Error ? reason.message : 'Could not create person');
-        } finally {
-            setBusy(false);
-        }
-    }
 }

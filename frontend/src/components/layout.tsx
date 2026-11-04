@@ -23,7 +23,7 @@ import {
     Users,
     X,
 } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
@@ -162,6 +162,10 @@ function Sidebar() {
     const [searchParams] = useSearchParams();
     const [query, setQuery] = useState(searchParams.get('q') ?? '');
     const [addOpen, setAddOpen] = useState(false);
+
+    useEffect(() => {
+        setQuery(searchParams.get('q') ?? '');
+    }, [searchParams]);
 
     const currentPerson = searchParams.get('person');
     const currentScene = searchParams.get('scene');
