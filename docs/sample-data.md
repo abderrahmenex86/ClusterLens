@@ -25,5 +25,3 @@ The screenshots in the README use a 24-photo toy library, not a personal archive
 | Roger Federer | [Roger Federer 2012 Doha.jpg](https://commons.wikimedia.org/wiki/File%3ARoger_Federer_2012_Doha.jpg) | Doha Stadium Plus Qatar | CC BY 2.0 |
 | Roger Federer | [Roger Federer 2015 (cropped).jpg](https://commons.wikimedia.org/wiki/File%3ARoger_Federer_2015_%28cropped%29.jpg) | Tatiana from Moscow, Russia | CC BY-SA 2.0 |
 | Whiteboard | [Change management whiteboard.jpg](https://commons.wikimedia.org/wiki/File:Change_management_whiteboard.jpg) | Birkenkrahe | CC BY-SA 3.0 |
-
-The preview source folder is ignored by git and lives at `data/preview-source` in a local checkout.
