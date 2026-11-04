@@ -2,7 +2,7 @@
 
 A local-first smart gallery for a recovered photo archive. It reads the EXIF that survived, reconstructs the people and documents from the pixels, and keeps every source folder read-only.
 
-![ClusterLens gallery grouped by year, with athlete portraits, a receipt, and a whiteboard](docs/screenshots/gallery.png)
+![Documents view with a receipt, a code screenshot, an intake form, and a whiteboard](docs/screenshots/documents.png)
 
 ## What it does
 
@@ -12,7 +12,7 @@ A local-first smart gallery for a recovered photo archive. It reads the EXIF tha
 - Exports full-photo copies into `People/<name>/`, `People/Unsorted/`, `Documents/<type>/`, and `Unknown/`, with a manifest for every copy.
 - Keeps indexing progress, failures, and job history in a bottom-left status dock, so the gallery stays edge-to-edge.
 
-![People page with five athlete cards and face counts](docs/screenshots/people.png)
+![People page with five CelebA identity cards and face counts; the faces are blurred](docs/screenshots/people.png)
 
 ## Run it
 
@@ -51,8 +51,6 @@ Confirmed faces go through k-NN first. If a linear SVM is trained, its probabili
 
 Export is a copy job, never a move. A photo with three confirmed people is copied into three folders. If it has no confirmed person, it falls through to Documents, then Unknown. Every copy is recorded in `.clusterlens/manifest.jsonl`.
 
-![Documents view with a receipt, a code screenshot, a form, and a whiteboard](docs/screenshots/documents.png)
-
 ## Constraints
 
 Sources are read-only by contract. The indexer opens them read-only, duplicate detection groups instead of moving, and export writes only to a destination outside the sources.
@@ -74,7 +72,7 @@ No vector database, cloud queue, or hosted demo. SQLite in WAL mode, two backgro
 
 ## Preview data
 
-The screenshots use a 24-photo toy library with five athletes and four documents, not a personal archive. The source image files are not committed. Source links and licenses for the Commons photos are in [docs/sample-data.md](docs/sample-data.md); the receipt, form, and code screenshot were generated for the demo.
+The screenshots use a 24-photo toy library: four photos for each of five CelebA identities, plus four documents. The source images are not committed. CelebA is used locally under its non-commercial research terms, and the faces are blurred in the screenshots. The receipt, intake form, and code screenshot were generated for the demo; the whiteboard is a CC BY-SA photo. Dataset links, terms, and credits are in [docs/sample-data.md](docs/sample-data.md).
 
 ## Stack
 
