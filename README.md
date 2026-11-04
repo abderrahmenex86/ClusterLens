@@ -74,7 +74,7 @@ No vector database, cloud queue, or hosted demo. SQLite in WAL mode, two backgro
 
 ## Preview data
 
-The screenshots use a 24-photo toy library with five athletes and four documents, not a personal archive. The image files are not committed. Source links and licenses for the Commons photos are in [docs/sample-data.md](docs/sample-data.md); the receipt, form, and code screenshot were generated for the demo.
+The screenshots use a 24-photo toy library with five athletes and four documents, not a personal archive. The source image files are not committed. Source links and licenses for the Commons photos are in [docs/sample-data.md](docs/sample-data.md); the receipt, form, and code screenshot were generated for the demo.
 
 ## Stack
 
