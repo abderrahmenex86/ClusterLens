@@ -17,7 +17,7 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-const STORAGE_KEY = 'clusterlens-theme';
+const STORAGE_KEY = 'clusterlens-theme-v2';
 
 function initialTheme(): Theme {
     try {
@@ -26,7 +26,7 @@ function initialTheme(): Theme {
     } catch {
         // Ignore storage errors.
     }
-    return 'dark';
+    return 'light';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
