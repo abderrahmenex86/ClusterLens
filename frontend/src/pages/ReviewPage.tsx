@@ -247,9 +247,9 @@ export function ReviewPage() {
                                 />
                             </div>
 
-                            <div className='mt-5 grid grid-cols-3 gap-2'>
+                            <div className='mt-5 grid max-w-[360px] grid-cols-3 gap-1'>
                                 {current.sampleFaceIds.map((faceId) => (
-                                    <div key={faceId} className='aspect-square overflow-hidden rounded-xl border border-line'>
+                                    <div key={faceId} className='aspect-square overflow-hidden bg-surface-strong'>
                                         <img src={`/api/faces/${faceId}/thumb`} alt='' className='h-full w-full object-cover' />
                                     </div>
                                 ))}

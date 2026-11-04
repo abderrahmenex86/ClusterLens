@@ -43,7 +43,7 @@ Set `CLUSTERLENS_DATA_DIR` to choose where the SQLite database, thumbnails, face
 
 Adding a source queues a background scan. The scanner hashes files, links exact duplicates to one image, and marks missing files without deleting their metadata. A separate IO job generates thumbnails first, so the gallery fills before the slower analysis. The analysis job then extracts face boxes and 512-D embeddings, computes a SigLIP image embedding, and stores zero-shot scene labels.
 
-New faces first go through k-NN against confirmed faces. If a classifier is trained, its probability is used as a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal is what creates a person. Corrections are logged, a face moved away from a person becomes a cannot-link for that person, and enough corrections queue a classifier retrain.
+New faces first go through k-NN against confirmed faces. If a classifier is trained, its probability is used as a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal is what creates a person. Clusters are proposals, not truth; faces that never cluster go to a separate face-level review queue. Corrections are logged, a face moved away from a person becomes a cannot-link for that person, and enough corrections queue a classifier retrain.
 
 Search embeds the query with SigLIP and compares it to the image matrix with cosine similarity. At this library size, a matrix multiply is enough; a vector database is deliberately not part of the stack.
 
