@@ -1,23 +1,22 @@
 # ClusterLens
 
-A local-first smart gallery for recovered photo archives. It was built after a corrupted drive left thousands of photos with scrambled filenames and partial metadata, so it keeps the EXIF that survived and reconstructs what is missing from the pixels: the people in the photos, the documents between them, and a timeline that still makes sense.
+A local-first smart gallery for a recovered photo archive. It reads the EXIF that survived, reconstructs the people and documents from the pixels, and keeps every source folder read-only.
 
-![ClusterLens gallery with blurred sample photos](docs/screenshots/gallery.png)
+![ClusterLens gallery grouped by year, with athlete portraits, a receipt, and a whiteboard](docs/screenshots/gallery.png)
 
 ## What it does
 
-- Indexes multiple folders in place. DCIM, Downloads, Pictures, Telegram, and Messenger folders are sources, not a special import format. Files are never moved, renamed, or deleted.
-- Detects faces with InsightFace, groups unsorted faces with HDBSCAN, and keeps confirmed people stable while new photos arrive.
-- Assigns new faces with k-NN over confirmed faces and an optional linear SVM trained from corrections.
-- Groups the gallery by year from EXIF dates instead of rebuilding a Years folder. Photos without a usable date fall into one Date unknown group.
-- Keeps indexing progress, failures, and job history in a floating bottom-left status dock, so the gallery stays edge-to-edge.
-- Uses zero-shot labels to identify documents and screenshots without a separate classifier. People and Documents are the primary browse modes.
-- Exports full-photo copies into a people-first tree, with documents and unknown as fallbacks. Every copy is recorded in `.clusterlens/manifest.jsonl`.
-- Resets the index, thumbnails, classifier models, and export history from Settings without touching the source folders or exported copies.
+- Indexes folders in place. A scan hashes files, links exact duplicates, and marks missing files without deleting metadata.
+- Finds people with InsightFace and HDBSCAN proposals, then assigns new faces with k-NN and an optional linear SVM trained from corrections.
+- Groups the gallery by EXIF year and labels documents and screenshots with zero-shot SigLIP prompts. People and Documents are the primary browse modes.
+- Exports full-photo copies into `People/<name>/`, `People/Unsorted/`, `Documents/<type>/`, and `Unknown/`, with a manifest for every copy.
+- Keeps indexing progress, failures, and job history in a bottom-left status dock, so the gallery stays edge-to-edge.
+
+![People page with five athlete cards and face counts](docs/screenshots/people.png)
 
 ## Run it
 
-Requires Python 3.10+, Node 20.19+ (or 22.12+), and about 2 GB of disk for model weights.
+Requires Python 3.10+, Node 20.19+ (or 22.12+), and about 2 GB of disk for the model weights.
 
 ```bash
 git clone https://github.com/abderrahmenex86/ClusterLens.git
@@ -34,38 +33,48 @@ cd ..
 python -m backend.app
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). Add folders from Settings → Sources. The first analysis downloads the InsightFace and SigLIP weights once, then runs entirely on the machine.
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765) and add folders from Settings → Sources. The first analysis downloads the InsightFace and SigLIP weights once; later runs stay on the machine.
 
-For development, run `npm run dev` in `frontend` with the API on port 8765. Vite proxies `/api` to the backend. Run the backend tests with `venv/bin/python -m unittest discover -s tests`.
+For development, run `npm run dev` in `frontend` with the API on port 8765. Vite proxies `/api`. Run the backend tests with:
 
-Set `CLUSTERLENS_DATA_DIR` to choose where the SQLite database, thumbnails, face crops, and classifier models live. The default is `~/.local/share/clusterlens`.
+```bash
+venv/bin/python -m unittest discover -s tests
+```
+
+Set `CLUSTERLENS_DATA_DIR` to choose where SQLite, thumbnails, face crops, and classifier models live. The default is `~/.local/share/clusterlens`.
 
 ## How it works
 
-Adding a source queues a background scan. The scanner hashes files, links exact duplicates to one image, and marks missing files without deleting their metadata. A separate IO job generates thumbnails first, so the gallery fills before the slower analysis. The analysis job then extracts face boxes and 512-D embeddings, computes a SigLIP image embedding, and stores zero-shot scene labels.
+A scan records file hashes and links exact duplicates to one image. A thumbnail job fills the grid first, then the analysis job extracts face boxes and 512-D embeddings, computes a SigLIP image embedding, and stores zero-shot scene labels.
 
-New faces first go through k-NN against confirmed faces. If a classifier is trained, its probability is used as a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal is what creates a person. Clusters are proposals, not truth; faces that never cluster go to a separate face-level review queue. Corrections are logged, a face moved away from a person becomes a cannot-link for that person, and enough corrections queue a classifier retrain.
+Confirmed faces go through k-NN first. If a linear SVM is trained, its probability is a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal creates a person. A face moved away from a person becomes a cannot-link for that person, enough corrections queue a retrain, and clusters remain proposals rather than truth.
 
-SigLIP embeddings also power natural-language search in the API. The interface keeps search out of the way for now: People, Documents, and the timeline are the primary ways in. The same embeddings group visually similar photos without a vector database; at this library size, a matrix multiply is enough.
+Export is a copy job, never a move. A photo with three confirmed people is copied into three folders. If it has no confirmed person, it falls through to Documents, then Unknown. Every copy is recorded in `.clusterlens/manifest.jsonl`.
 
-Export is a copy job, never a move. A photo with three confirmed people is copied into three `People/<name>/` folders. If it has no confirmed person, it falls through to `Documents/`, then `Unknown/`. The manifest records the source path, content hash, labels, and export path for every copy.
+![Documents view with a receipt, a code screenshot, a form, and a whiteboard](docs/screenshots/documents.png)
 
 ## Constraints
 
-Sources are read-only by contract. The indexer opens them read-only, duplicate detection groups instead of moving, and export writes only to a chosen destination outside the sources. The old CLI that moved duplicates and archived originals is gone.
+Sources are read-only by contract. The indexer opens them read-only, duplicate detection groups instead of moving, and export writes only to a destination outside the sources.
 
-The app binds to `127.0.0.1`, serves the frontend from the same origin, and has no CORS or upload path. Photos stay on the machine. Model downloads are the only network calls, and only on the first run.
+The app binds to `127.0.0.1`, serves the frontend from the same origin, and has no upload path or CORS. Photos stay on disk. Model downloads are the only network calls, and only on the first run.
 
-No vector database, no cloud queue, no hosted demo. SQLite in WAL mode, two background workers, and models cached locally are enough for a personal archive.
+No vector database, cloud queue, or hosted demo. SQLite in WAL mode, two background workers, and locally cached models are enough for a personal archive.
 
 ## Limits
 
-- First ingest is CPU-bound. On a 6-core Ryzen 5, face detection measured about 310 ms per image; SigLIP adds roughly 0.3 s per image. Expect one to two hours for 9,000 photos. Incremental scans are fast.
-- Dates come from EXIF when present. A scan of the recovered archive found 7,171 of 9,022 files with a usable EXIF date, so the gallery groups by year and the person timelines use real dates. The other 1,851 files show unknown rather than an inferred date; recovered file mtimes are treated as unreliable. GPS is present on 1,630 files but is not used yet.
-- The folder watcher is not wired yet. Adding a source scans it; new files need a rescan until the watcher lands.
-- Manual face creation and a drag-and-drop box editor are not there yet. A selected face can be reassigned, ignored, or corrected through numeric box coordinates, which re-embeds the face.
-- The interface is desktop-first. Mobile has a compact nav, not the full two-sidebar workflow.
-- There is no authentication. That is appropriate for a localhost tool and not for a shared machine.
+- First ingest is CPU-bound. On a 6-core Ryzen 5, face detection measured about 310 ms per image, and SigLIP added roughly 0.3 s per image. Expect one to two hours for 9,000 photos; incremental scans are fast.
+- Dates come from EXIF when present. A scan of the recovered archive found 7,171 usable dates across 9,022 files, so 1,851 photos fall into Date unknown. GPS is present on 1,630 files but is not used.
+- Zero-shot scene labels are approximate. People and documents with unusual framing can land in the wrong label, and there is no OCR pass.
+- The folder watcher is not wired yet. Adding a source scans it; new files need a rescan.
+- Manual face creation and a drag-and-drop box editor are not there. A selected face can be reassigned or corrected through numeric box coordinates, which re-embeds it.
+- Semantic search exists in the API but is disabled in the UI for now.
+- The interface is desktop-first. Mobile has a compact nav, not the full sidebar workflow.
+- There is no authentication. That fits a localhost tool and not a shared machine.
+
+## Preview data
+
+The screenshots use a 24-photo toy library with five athletes and four documents, not a personal archive. The image files are not committed. Source links and licenses for the Commons photos are in [docs/sample-data.md](docs/sample-data.md); the receipt, form, and code screenshot were generated for the demo.
 
 ## Stack
 
