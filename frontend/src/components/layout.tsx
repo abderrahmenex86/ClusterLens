@@ -1,7 +1,5 @@
 import {
     Activity,
-    Aperture,
-    CalendarDays,
     CheckCircle2,
     ChevronDown,
     ChevronRight,
@@ -10,35 +8,31 @@ import {
     FolderPlus,
     Images,
     Loader2,
-    Moon,
     Pause,
     Play,
     Plus,
     RotateCcw,
     Search,
-    Settings,
     Sparkles,
-    Sun,
+    FileText,
     Trash2,
     Users,
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { FaBrain, FaCog, FaFileExport, FaMoon, FaSun } from 'react-icons/fa';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { api, type Job, type Source } from '@/lib/api';
+import { api, type Job } from '@/lib/api';
 import {
     useClassifier,
     useJobs,
     usePeople,
     useReview,
-    useScenes,
-    useSettings,
     useSources,
     useStats,
-    useTimeline,
 } from '@/lib/hooks';
 import { useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
@@ -152,25 +146,18 @@ function SidebarLink({
 function Sidebar() {
     const { data: stats } = useStats();
     const { data: people } = usePeople();
-    const { data: scenes } = useScenes();
-    const { data: timeline } = useTimeline();
-    const { data: sources } = useSources();
     const { data: review } = useReview();
     const { data: classifier } = useClassifier();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams] = useSearchParams();
     const [query, setQuery] = useState(searchParams.get('q') ?? '');
-    const [addOpen, setAddOpen] = useState(false);
 
     useEffect(() => {
         setQuery(searchParams.get('q') ?? '');
     }, [searchParams]);
 
     const currentPerson = searchParams.get('person');
-    const currentScene = searchParams.get('scene');
-    const currentYear = searchParams.get('year');
-    const currentSource = searchParams.get('source');
 
     function submitSearch(event: React.FormEvent) {
         event.preventDefault();
@@ -220,6 +207,15 @@ function Sidebar() {
                             <Images size={15} /> All photos
                             <span className='ml-auto text-[11px] tabular-nums text-muted'>{stats?.visibleImages ?? stats?.images ?? 0}</span>
                         </SidebarLink>
+                        <SidebarLink
+                            to='/?document=true'
+                            active={searchParams.get('document') === 'true'}
+                        >
+                            <FileText size={15} /> Documents
+                            <span className='ml-auto text-[11px] tabular-nums text-muted'>
+                                {stats?.documents ?? 0}
+                            </span>
+                        </SidebarLink>
                         <SidebarLink to='/review' active={location.pathname.startsWith('/review')}>
                             <CircleAlert size={15} /> Needs review
                             <span className='ml-auto text-[11px] tabular-nums text-muted'>
@@ -261,74 +257,12 @@ function Sidebar() {
                             </Section>
                         </div>
 
-                        <Section title='Scenes' icon={<Sparkles size={15} />} count={scenes?.items.length ?? 0}>
-                            <div className='flex flex-col gap-0.5'>
-                                {scenes?.items.slice(0, 10).map((scene) => (
-                                    <SidebarLink
-                                        key={scene.label}
-                                        to={`/?scene=${encodeURIComponent(scene.label)}`}
-                                        active={currentScene === scene.label}
-                                    >
-                                        <span className='truncate capitalize'>{scene.label}</span>
-                                        <span className='ml-auto text-[11px] tabular-nums text-muted'>
-                                            {scene.count}
-                                        </span>
-                                    </SidebarLink>
-                                ))}
-                                {!scenes?.items.length && (
-                                    <p className='px-2 py-2 text-xs text-muted'>Scene labels appear after analysis.</p>
-                                )}
-                            </div>
-                        </Section>
-
-                        <Section title='Years' icon={<CalendarDays size={15} />} count={timeline?.items.length ?? 0}>
-                            <div className='flex flex-col gap-0.5'>
-                                {timeline?.items.map((year) => (
-                                    <SidebarLink key={year.year} to={`/?year=${year.year}`} active={currentYear === year.year}>
-                                        <span>{year.year}</span>
-                                        <span className='ml-auto text-[11px] tabular-nums text-muted'>{year.count}</span>
-                                    </SidebarLink>
-                                ))}
-                                {!timeline?.items.length && (
-                                    <p className='px-2 py-2 text-xs text-muted'>Dates are unknown for most recovered files.</p>
-                                )}
-                            </div>
-                        </Section>
-
-                        <Section title='Sources' icon={<FolderOpen size={15} />} count={sources?.items.length ?? 0}>
-                            <div className='flex flex-col gap-0.5'>
-                                {sources?.items.map((source) => (
-                                    <SidebarLink
-                                        key={source.id}
-                                        to={`/?source=${source.id}`}
-                                        active={currentSource === String(source.id)}
-                                    >
-                                        <span className='h-1.5 w-1.5 rounded-full bg-success' />
-                                        <span className='truncate'>{source.label}</span>
-                                        <span className='ml-auto text-[11px] tabular-nums text-muted'>
-                                            {source.imageCount}
-                                        </span>
-                                    </SidebarLink>
-                                ))}
-                                <button
-                                    type='button'
-                                    onClick={() => setAddOpen(true)}
-                                    className='mt-1 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-accent hover:bg-accent-soft'
-                                >
-                                    <Plus size={13} /> Add folders
-                                </button>
-                            </div>
-                        </Section>
-
                         <Separator className='my-3' />
                         <SidebarLink to='/people'>
                             <Users size={15} /> People directory
                         </SidebarLink>
                         <SidebarLink to='/sources'>
                             <FolderPlus size={15} /> Manage sources
-                        </SidebarLink>
-                        <SidebarLink to='/export'>
-                            <FolderOpen size={15} /> Export
                         </SidebarLink>
                     </div>
                 </ScrollArea>
@@ -368,7 +302,6 @@ function Sidebar() {
                 </div>
             </aside>
 
-            <AddSourceDialog open={addOpen} onOpenChange={setAddOpen} />
         </>
     );
 }
@@ -632,43 +565,76 @@ function StatusBar() {
 function Header() {
     const { theme, toggle } = useTheme();
     const { data: jobs } = useJobs();
+    const { data: classifier } = useClassifier();
+    const queryClient = useQueryClient();
+    const [training, setTraining] = useState(false);
     const active = (jobs?.items ?? []).some((job) => ACTIVE.has(job.status));
+
+    async function trainSvm() {
+        setTraining(true);
+        try {
+            await api.trainClassifier();
+            toast.success('SVM training queued');
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['classifier'] }),
+                queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+            ]);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not train SVM');
+        } finally {
+            setTraining(false);
+        }
+    }
 
     return (
         <header className='flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface/70 px-4 backdrop-blur'>
-            <Link to='/' className='flex items-center gap-2.5 rounded-lg px-1 py-1'>
-                <span className='flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-ink'>
-                    <Aperture size={17} />
-                </span>
+            <Link to='/' className='flex items-center gap-2 rounded-lg px-1 py-1'>
                 <span className='text-[17px] font-bold tracking-tight'>ClusterLens</span>
                 <Badge variant='outline' className='hidden sm:inline-flex'>
                     local
                 </Badge>
             </Link>
-            <div className='flex items-center gap-1'>
+            <div className='flex items-center gap-1.5'>
                 {active && (
                     <span className='mr-1 hidden items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent sm:flex'>
                         <ActiveDot /> indexing
                     </span>
                 )}
+                <Button
+                    variant='secondary'
+                    size='sm'
+                    onClick={trainSvm}
+                    disabled={!classifier?.canTrain || training}
+                    title={
+                        classifier?.canTrain
+                            ? 'Train the SVM from confirmed faces'
+                            : 'Confirm at least two people with two faces each first'
+                    }
+                >
+                    {training ? <Loader2 size={14} className='animate-spin' /> : <FaBrain size={14} />}
+                    <span className='hidden sm:inline'>Train SVM</span>
+                </Button>
+                <Button asChild variant='secondary' size='sm'>
+                    <Link to='/export'>
+                        <FaFileExport size={14} />
+                        <span className='hidden sm:inline'>Export</span>
+                    </Link>
+                </Button>
+                <span className='mx-1 hidden h-6 w-px bg-line sm:block' />
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant='ghost' size='icon' onClick={toggle} aria-label='Toggle theme'>
-                            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+                            {theme === 'dark' ? <FaSun size={16} /> : <FaMoon size={16} />}
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>Toggle theme</TooltipContent>
                 </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button asChild variant='ghost' size='icon'>
-                            <Link to='/settings' aria-label='Settings'>
-                                <Settings size={17} />
-                            </Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Settings</TooltipContent>
-                </Tooltip>
+                <Button asChild variant='ghost' size='sm'>
+                    <Link to='/settings'>
+                        <FaCog size={15} />
+                        <span className='hidden sm:inline'>Settings</span>
+                    </Link>
+                </Button>
             </div>
         </header>
     );
@@ -677,10 +643,10 @@ function Header() {
 function MobileNav() {
     const items = [
         { to: '/', label: 'Library', icon: <Images size={15} /> },
-        { to: '/review', label: 'Review', icon: <Sparkles size={15} /> },
+        { to: '/?document=true', label: 'Documents', icon: <FileText size={15} /> },
         { to: '/people', label: 'People', icon: <Users size={15} /> },
+        { to: '/review', label: 'Review', icon: <Sparkles size={15} /> },
         { to: '/sources', label: 'Sources', icon: <FolderOpen size={15} /> },
-        { to: '/export', label: 'Export', icon: <FolderPlus size={15} /> },
     ];
     return (
         <nav className='flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line bg-surface px-2 py-1.5 md:hidden'>

@@ -1,6 +1,6 @@
 # ClusterLens
 
-A local-first smart gallery for recovered photo archives. It was built after a corrupted drive left thousands of photos with scrambled filenames and partial metadata, so it keeps the EXIF that survived and reconstructs what is missing from the pixels: people, scenes, visual similarity, and a searchable library.
+A local-first smart gallery for recovered photo archives. It was built after a corrupted drive left thousands of photos with scrambled filenames and partial metadata, so it keeps the EXIF that survived and reconstructs what is missing from the pixels: people, documents, visual similarity, and a searchable library.
 
 ![ClusterLens gallery with blurred sample photos](docs/screenshots/gallery.png)
 
@@ -9,9 +9,9 @@ A local-first smart gallery for recovered photo archives. It was built after a c
 - Indexes multiple folders in place. DCIM, Downloads, Pictures, Telegram, and Messenger folders are sources, not a special import format. Files are never moved, renamed, or deleted.
 - Detects faces with InsightFace, groups unsorted faces with HDBSCAN, and keeps confirmed people stable while new photos arrive.
 - Assigns new faces with k-NN over confirmed faces and an optional linear SVM trained from corrections.
-- Searches the library in natural language with SigLIP image and text embeddings, then filters by person, scene, source, or year.
-- Labels scenes with zero-shot prompts, so a beach, a room, a document, or a screenshot can be found without a second classifier.
-- Exports full-photo copies into a people-first tree, with scenes, years, and unknown as fallbacks. Every copy is recorded in `.clusterlens/manifest.jsonl`.
+- Searches the library in natural language with SigLIP image and text embeddings, then filters by person, document, or year.
+- Uses zero-shot labels to identify documents and screenshots without a separate classifier. People and Documents are the primary browse modes.
+- Exports full-photo copies into a people-first tree, with documents and unknown as fallbacks. Every copy is recorded in `.clusterlens/manifest.jsonl`.
 - Resets the index, thumbnails, classifier models, and export history from Settings without touching the source folders or exported copies.
 
 ## Run it
@@ -47,7 +47,7 @@ New faces first go through k-NN against confirmed faces. If a classifier is trai
 
 Search embeds the query with SigLIP and compares it to the image matrix with cosine similarity. At this library size, a matrix multiply is enough; a vector database is deliberately not part of the stack.
 
-Export is a copy job, never a move. A photo with three confirmed people is copied into three `People/<name>/` folders. If it has no confirmed person, it falls through to `Scenes/`, then `Years/`, then `Unknown/`. The manifest records the source path, content hash, labels, and export path for every copy.
+Export is a copy job, never a move. A photo with three confirmed people is copied into three `People/<name>/` folders. If it has no confirmed person, it falls through to `Documents/`, then `Unknown/`. The manifest records the source path, content hash, labels, and export path for every copy.
 
 ## Constraints
 
@@ -60,10 +60,9 @@ No vector database, no cloud queue, no hosted demo. SQLite in WAL mode, two back
 ## Limits
 
 - First ingest is CPU-bound. On a 6-core Ryzen 5, face detection measured about 310 ms per image; SigLIP adds roughly 0.3 s per image. Expect one to two hours for 9,000 photos. Incremental scans are fast.
-- Dates come from EXIF when present. Many recovered files kept their capture date, and those populate the Years view and person timelines. Files without a usable EXIF date show unknown rather than an inferred date; recovered file mtimes are treated as unreliable.
+- Dates come from EXIF when present. A scan of the recovered archive found 7,171 of 9,022 files with a usable EXIF date, so the gallery groups by year and the person timelines use real dates. The other 1,851 files show unknown rather than an inferred date; recovered file mtimes are treated as unreliable. GPS is present on 1,630 files but is not used yet.
 - The folder watcher is not wired yet. Adding a source scans it; new files need a rescan until the watcher lands.
 - Manual face creation and a drag-and-drop box editor are not there yet. A selected face can be reassigned, ignored, or corrected through numeric box coordinates, which re-embeds the face.
-- Events are reserved in the export shape but not inferred yet.
 - The interface is desktop-first. Mobile has a compact nav, not the full two-sidebar workflow.
 - There is no authentication. That is appropriate for a localhost tool and not for a shared machine.
 

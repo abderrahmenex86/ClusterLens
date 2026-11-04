@@ -78,6 +78,7 @@ class ExportRoutingTests(unittest.TestCase):
         self._add_image(4, "four.jpg", scene="beach")
         self._add_image(5, "five.jpg", date="2020-05-01T10:00:00")
         self._add_image(6, "six.jpg")
+        self._add_image(7, "seven.jpg", scene="document")
         self.services = Services(self.settings, self.db)
 
     def tearDown(self):
@@ -138,13 +139,12 @@ class ExportRoutingTests(unittest.TestCase):
     def test_people_first_routing_and_multi_person_copies(self):
         destination = self.root / "export"
         preview = self.services.export_preview(str(destination))
-        self.assertEqual(preview["totalPhotos"], 6)
+        self.assertEqual(preview["totalPhotos"], 7)
         self.assertEqual(preview["byBranch"]["people"], 3)
         self.assertEqual(preview["byBranch"]["peopleUnsorted"], 1)
-        self.assertEqual(preview["byBranch"]["scenes"], 1)
-        self.assertEqual(preview["byBranch"]["years"], 1)
-        self.assertEqual(preview["byBranch"]["unknown"], 1)
-        self.assertEqual(preview["copies"], 7)
+        self.assertEqual(preview["byBranch"]["documents"], 1)
+        self.assertEqual(preview["byBranch"]["unknown"], 3)
+        self.assertEqual(preview["copies"], 8)
         self.assertEqual(preview["multiPersonPhotos"], 1)
 
     def test_destination_inside_source_is_rejected(self):

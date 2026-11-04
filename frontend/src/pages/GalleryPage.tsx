@@ -27,6 +27,7 @@ export function GalleryPage() {
     const year = searchParams.get('year');
     const sourceId = searchParams.get('source');
     const unsorted = searchParams.get('unsorted') === 'true';
+    const document = searchParams.get('document') === 'true';
 
     const person = people?.items.find((item) => String(item.id) === personId);
     const source = sources?.items.find((item) => String(item.id) === sourceId);
@@ -39,8 +40,9 @@ export function GalleryPage() {
             year,
             sourceId: sourceId ? Number(sourceId) : null,
             unsorted: unsorted || null,
+            document: document || null,
         }),
-        [q, personId, scene, year, sourceId, unsorted]
+        [q, personId, scene, year, sourceId, unsorted, document]
     );
 
     useEffect(() => {
@@ -122,6 +124,7 @@ export function GalleryPage() {
                 scene,
                 sourceId: filters.sourceId,
                 year,
+                document: document || null,
                 limit: PAGE_SIZE,
                 offset,
             });
@@ -133,6 +136,7 @@ export function GalleryPage() {
             sourceId: filters.sourceId,
             year,
             unsorted: filters.unsorted,
+            document: document || null,
             limit: PAGE_SIZE,
             offset,
         });
@@ -202,11 +206,29 @@ export function GalleryPage() {
 
     function clearFilters() {
         const next = new URLSearchParams(searchParams);
-        ['q', 'person', 'scene', 'year', 'source', 'unsorted'].forEach((key) => next.delete(key));
+        ['q', 'person', 'scene', 'year', 'source', 'unsorted', 'document'].forEach((key) => next.delete(key));
         setSearchParams(next);
     }
 
-    const hasFilters = Boolean(q || personId || scene || year || sourceId || unsorted);
+    const groups = useMemo(() => {
+        if (q) return [{ key: null as string | null, items }];
+        const map = new Map<string, ImageSummary[]>();
+        for (const image of items) {
+            const key = image.dateTaken ? image.dateTaken.slice(0, 4) : 'Date unknown';
+            const group = map.get(key);
+            if (group) group.push(image);
+            else map.set(key, [image]);
+        }
+        return [...map.entries()]
+            .sort(([a], [b]) => {
+                if (a === 'Date unknown') return 1;
+                if (b === 'Date unknown') return -1;
+                return b.localeCompare(a);
+            })
+            .map(([key, groupItems]) => ({ key, items: groupItems }));
+    }, [items, q]);
+
+    const hasFilters = Boolean(q || personId || scene || year || sourceId || unsorted || document);
     const title = q
         ? `Search “${q}”`
         : person
@@ -219,7 +241,9 @@ export function GalleryPage() {
                 ? source.label
                 : unsorted
                   ? 'Needs review'
-                  : 'Library';
+                  : document
+                    ? 'Documents'
+                    : 'Library';
 
     return (
         <div className='pb-12'>
@@ -281,6 +305,7 @@ export function GalleryPage() {
                     {year && <FilterChip label={year} onRemove={() => removeFilter('year')} />}
                     {source && <FilterChip label={source.label} onRemove={() => removeFilter('source')} />}
                     {unsorted && <FilterChip label='Needs review' onRemove={() => removeFilter('unsorted')} />}
+                    {document && <FilterChip label='Documents' onRemove={() => removeFilter('document')} />}
                     <button
                         type='button'
                         onClick={clearFilters}
@@ -358,16 +383,29 @@ export function GalleryPage() {
                     />
                 ) : (
                     <>
-                        <div className='-mx-6 grid grid-cols-2 gap-0 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'>
-                            {items.map((image, index) => (
-                                <ImageTile
-                                    key={image.id}
-                                    image={image}
-                                    to={photoLink(image.id)}
-                                    className='aspect-square'
-                                />
-                            ))}
-                        </div>
+                        {groups.map((group) => (
+                            <section key={group.key ?? 'results'}>
+                                {group.key && (
+                                    <div className='sticky top-0 z-10 flex items-baseline justify-between border-b border-line bg-background/95 px-6 py-2 backdrop-blur'>
+                                        <h2 className='text-lg font-bold tracking-tight'>{group.key}</h2>
+                                        <span className='text-xs text-muted'>
+                                            {group.items.length.toLocaleString()}{' '}
+                                            {group.items.length === 1 ? 'photo' : 'photos'}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className='-mx-6 grid grid-cols-2 gap-0 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'>
+                                    {group.items.map((image) => (
+                                        <ImageTile
+                                            key={image.id}
+                                            image={image}
+                                            to={photoLink(image.id)}
+                                            className='aspect-square'
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
                         {items.length < total && (
                             <div className='flex justify-center py-8'>
                                 <Button variant='secondary' onClick={loadMore} disabled={loadingMore}>

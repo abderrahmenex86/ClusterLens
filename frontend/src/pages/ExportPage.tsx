@@ -63,9 +63,7 @@ export function ExportPage() {
     const branchLabels: Record<string, string> = {
         people: 'People',
         peopleUnsorted: 'People / Unsorted',
-        scenes: 'Scenes',
-        events: 'Events',
-        years: 'Years',
+        documents: 'Documents',
         unknown: 'Unknown',
     };
 
@@ -73,7 +71,7 @@ export function ExportPage() {
         <div className='pb-12'>
             <PageHeader
                 title='Export'
-                subtitle='Copy the library into a people-first tree. One full photo per person; scenes, years, and unknown are fallbacks.'
+                subtitle='Copy the library into a people-first tree. One full photo per person; documents are the fallback, everything else is Unknown.'
                 actions={
                     <Badge variant='outline'>
                         <PackageOpen size={12} /> copies only
@@ -159,8 +157,8 @@ export function ExportPage() {
                             </p>
 
                             <div className='flex justify-center rounded-2xl border border-dashed border-line p-4 font-mono text-[11px] leading-6 text-muted'>
-                                People/&lt;name&gt;/photo.jpg · People/Unsorted/photo.jpg · Scenes/&lt;scene&gt;/photo.jpg ·
-                                Years/&lt;year&gt;/photo.jpg · Unknown/photo.jpg
+                                People/&lt;name&gt;/photo.jpg · People/Unsorted/photo.jpg ·
+                                Documents/&lt;type&gt;/photo.jpg · Unknown/photo.jpg
                             </div>
                         </div>
                     )}
@@ -229,7 +227,7 @@ export function ExportPage() {
                     <div className='rounded-3xl border border-dashed border-line p-4 text-xs leading-5 text-muted'>
                         <CheckCircle2 size={15} className='mb-2 text-success' />
                         Full photos are copied into each person’s folder. If a photo has three named people, it is
-                        copied three times; scenes and years are ignored for that photo.
+                        copied three times; documents are ignored for that photo.
                     </div>
                 </aside>
             </div>

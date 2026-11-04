@@ -47,6 +47,16 @@ IGNORE_DIRS = {
 
 FACE_EMBEDDING_MODEL = "insightface_buffalo_l"
 
+DOCUMENT_LABELS = (
+    "document",
+    "screenshot",
+    "receipt",
+    "whiteboard",
+    "paper",
+    "book",
+    "form",
+)
+
 
 class ServiceError(Exception):
     pass
@@ -105,6 +115,17 @@ def _primary_scene(db: Database, image_id: int) -> str | None:
     row = db.query_one(
         "SELECT label FROM scene_labels WHERE image_id = ? ORDER BY score DESC LIMIT 1",
         (image_id,),
+    )
+    return str(row["label"]) if row else None
+
+
+def _document_label(db: Database, image_id: int) -> str | None:
+    placeholders = ",".join("?" for _ in DOCUMENT_LABELS)
+    row = db.query_one(
+        f"SELECT label FROM scene_labels WHERE image_id = ? AND is_primary = 1 "
+        f"AND label IN ({placeholders}) "
+        "ORDER BY score DESC LIMIT 1",
+        (image_id, *DOCUMENT_LABELS),
     )
     return str(row["label"]) if row else None
 
@@ -950,9 +971,7 @@ class Services:
         by_branch = {
             "people": 0,
             "peopleUnsorted": 0,
-            "scenes": 0,
-            "events": 0,
-            "years": 0,
+            "documents": 0,
             "unknown": 0,
         }
         used: Counter[str] = Counter()
@@ -963,7 +982,7 @@ class Services:
                 continue
             total_photos += 1
             people = _image_people(self.db, int(image["id"]))
-            scene = _primary_scene(self.db, int(image["id"]))
+            document = _document_label(self.db, int(image["id"]))
             face_count = _face_count(self.db, int(image["id"]))
             targets: list[tuple[str, str]] = []
             if people:
@@ -973,11 +992,8 @@ class Services:
                     targets.append(("people", f"People/{_safe_name(person['name'])}"))
             elif face_count > 0:
                 targets.append(("peopleUnsorted", "People/Unsorted"))
-            elif scene:
-                targets.append(("scenes", f"Scenes/{_safe_name(scene)}"))
-            elif image["date_taken"]:
-                year = str(image["date_taken"])[:4]
-                targets.append(("years", f"Years/{_safe_name(year)}"))
+            elif document:
+                targets.append(("documents", f"Documents/{_safe_name(document)}"))
             else:
                 targets.append(("unknown", "Unknown"))
 
@@ -1079,7 +1095,7 @@ class Services:
                     continue
 
                 people = _image_people(self.db, image_id)
-                scene = _primary_scene(self.db, image_id)
+                document = _document_label(self.db, image_id)
                 face_count = _face_count(self.db, image_id)
                 targets: list[tuple[str, str, int | None]] = []
                 if people:
@@ -1089,11 +1105,8 @@ class Services:
                         )
                 elif face_count > 0:
                     targets.append(("People/Unsorted", "Unsorted", None))
-                elif scene:
-                    targets.append((f"Scenes/{_safe_name(scene)}", scene, None))
-                elif image["date_taken"]:
-                    year = str(image["date_taken"])[:4]
-                    targets.append((f"Years/{_safe_name(year)}", year, None))
+                elif document:
+                    targets.append((f"Documents/{_safe_name(document)}", document, None))
                 else:
                     targets.append(("Unknown", "Unknown", None))
 
@@ -1207,6 +1220,7 @@ class Services:
         scene: str | None = None,
         source_id: int | None = None,
         year: str | None = None,
+        document: bool | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[tuple[int, float]], int]:
@@ -1230,7 +1244,7 @@ class Services:
 
         scores = matrix @ query_vector
         allowed = self._filtered_image_ids(
-            person_id=person_id, scene=scene, source_id=source_id, year=year
+            person_id=person_id, scene=scene, source_id=source_id, year=year, document=document
         )
         if allowed is not None:
             mask = np.isin(ids, list(allowed))
@@ -1248,6 +1262,7 @@ class Services:
         scene: str | None,
         source_id: int | None,
         year: str | None,
+        document: bool | None = None,
     ) -> set[int] | None:
         clauses: list[str] = []
         params: list[Any] = []
@@ -1263,6 +1278,14 @@ class Services:
         if year:
             clauses.append("i.date_taken LIKE ?")
             params.append(f"{year}%")
+        if document is not None:
+            placeholders = ",".join("?" for _ in DOCUMENT_LABELS)
+            clauses.append(
+                ("EXISTS" if document else "NOT EXISTS")
+                + " (SELECT 1 FROM scene_labels s WHERE s.image_id = i.id "
+                + f"AND s.is_primary = 1 AND s.label IN ({placeholders}))"
+            )
+            params.extend(DOCUMENT_LABELS)
         if not clauses:
             return None
         rows = self.db.query(
@@ -1298,6 +1321,14 @@ class Services:
             ),
             "scenes": int(
                 self.db.scalar("SELECT COUNT(DISTINCT label) FROM scene_labels") or 0
+            ),
+            "documents": int(
+                self.db.scalar(
+                    "SELECT COUNT(DISTINCT image_id) FROM scene_labels "
+                    f"WHERE is_primary = 1 AND label IN ({','.join('?' for _ in DOCUMENT_LABELS)})",
+                    DOCUMENT_LABELS,
+                )
+                or 0
             ),
             "sources": int(self.db.scalar("SELECT COUNT(*) FROM sources") or 0),
             "proposals": int(

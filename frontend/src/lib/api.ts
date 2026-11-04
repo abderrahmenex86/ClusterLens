@@ -127,6 +127,7 @@ export type Stats = {
     faces: number;
     people: number;
     unsortedFaces: number;
+    documents: number;
     scenes: number;
     sources: number;
     proposals: number;
@@ -286,6 +287,7 @@ export const api = {
         year?: string | null;
         hasFaces?: boolean | null;
         unsorted?: boolean | null;
+        document?: boolean | null;
         limit?: number;
         offset?: number;
     }) =>
@@ -297,6 +299,7 @@ export const api = {
                 year: params.year ?? undefined,
                 has_faces: params.hasFaces ?? undefined,
                 unsorted: params.unsorted ?? undefined,
+                document: params.document ?? undefined,
                 limit: params.limit ?? 60,
                 offset: params.offset ?? 0,
             })}`
@@ -308,6 +311,7 @@ export const api = {
         scene?: string | null;
         sourceId?: number | null;
         year?: string | null;
+        document?: boolean | null;
         limit?: number;
         offset?: number;
     }) =>
@@ -318,6 +322,7 @@ export const api = {
                 scene: params.scene ?? undefined,
                 source_id: params.sourceId ?? undefined,
                 year: params.year ?? undefined,
+                document: params.document ?? undefined,
                 limit: params.limit ?? 60,
                 offset: params.offset ?? 0,
             })}`

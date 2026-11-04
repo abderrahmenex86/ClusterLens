@@ -21,7 +21,7 @@ from .jobs import (
     request_resume,
 )
 from .ml import load_image_asset, save_thumbnails
-from .services import ModelNotReady, ServiceError
+from .services import DOCUMENT_LABELS, ModelNotReady, ServiceError
 
 
 router = APIRouter(prefix="/api")
@@ -781,6 +781,7 @@ def list_images(
     year: str | None = None,
     has_faces: bool | None = None,
     unsorted: bool | None = None,
+    document: bool | None = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -820,10 +821,19 @@ def list_images(
             if unsorted
             else "NOT EXISTS (SELECT 1 FROM faces f WHERE f.image_id = i.id AND f.person_id IS NULL AND f.ignored_at IS NULL)"
         )
+    if document is not None:
+        placeholders = ",".join("?" for _ in DOCUMENT_LABELS)
+        clauses.append(
+            ("EXISTS" if document else "NOT EXISTS")
+            + " (SELECT 1 FROM scene_labels s WHERE s.image_id = i.id "
+            + f"AND s.is_primary = 1 AND s.label IN ({placeholders}))"
+        )
+        params.extend(DOCUMENT_LABELS)
     where = " WHERE " + " AND ".join(clauses)
     total = int(database.scalar(f"SELECT COUNT(*) FROM images i{where}", tuple(params)) or 0)
     rows = database.query(
-        f"SELECT i.* FROM images i{where} ORDER BY i.id DESC LIMIT ? OFFSET ?",
+        f"SELECT i.* FROM images i{where} "
+        "ORDER BY i.date_taken IS NULL ASC, i.date_taken DESC, i.id DESC LIMIT ? OFFSET ?",
         tuple(params + [limit, offset]),
     )
     return {
@@ -981,6 +991,7 @@ def search(
     scene: str | None = None,
     source_id: int | None = None,
     year: str | None = None,
+    document: bool | None = None,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
@@ -992,6 +1003,7 @@ def search(
             scene=scene,
             source_id=source_id,
             year=year,
+            document=document,
             limit=limit,
             offset=offset,
         )

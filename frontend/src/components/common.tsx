@@ -2,7 +2,7 @@ import { ImageOff, Plus, Search, UserRound } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
-import type { ImageSummary, Person, PersonRef } from '@/lib/api';
+import { formatDate, type ImageSummary, type Person, type PersonRef } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Badge, Button, Input, Popover, PopoverContent, PopoverTrigger } from '@/components/ui';
 
@@ -94,6 +94,7 @@ export function ImageTile({
                     ) : (
                         <p className='truncate text-xs font-semibold text-white/80'>Unsorted</p>
                     )}
+                    <p className='mt-0.5 text-[10px] text-white/70'>{formatDate(image.dateTaken)}</p>
                 </div>
                 {image.faceCount > 0 && (
                     <span className='rounded-sm bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur'>
