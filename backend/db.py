@@ -276,6 +276,12 @@ class Database:
         self._local.conn = conn
         return conn
 
+    def close(self) -> None:
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
+
     def initialize(self) -> None:
         conn = self.connect()
         conn.executescript(SCHEMA)

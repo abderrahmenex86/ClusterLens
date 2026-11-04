@@ -34,7 +34,7 @@ python -m backend.app
 
 Open [http://127.0.0.1:8765](http://127.0.0.1:8765). Add folders from the Sources page. The first analysis downloads the InsightFace and SigLIP weights once, then runs entirely on the machine.
 
-For development, run `npm run dev` in `frontend` with the API on port 8765. Vite proxies `/api` to the backend.
+For development, run `npm run dev` in `frontend` with the API on port 8765. Vite proxies `/api` to the backend. Run the backend tests with `venv/bin/python -m unittest discover -s tests`.
 
 Set `CLUSTERLENS_DATA_DIR` to choose where the SQLite database, thumbnails, face crops, and classifier models live. The default is `~/.local/share/clusterlens`.
 

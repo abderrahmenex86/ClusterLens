@@ -459,6 +459,10 @@ class Services:
                 self.db.execute(
                     "UPDATE images SET scene_at = ? WHERE id = ?", (now_iso(), image_id)
                 )
+            if not scenes_enabled and image["scene_at"] is None:
+                self.db.execute(
+                    "UPDATE images SET scene_at = ? WHERE id = ?", (now_iso(), image_id)
+                )
 
             self.db.execute(
                 "UPDATE images SET status = ?, error = ? WHERE id = ?",
