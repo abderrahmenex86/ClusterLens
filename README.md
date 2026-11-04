@@ -10,6 +10,7 @@ A local-first smart gallery for recovered photo archives. It was built after a c
 - Detects faces with InsightFace, groups unsorted faces with HDBSCAN, and keeps confirmed people stable while new photos arrive.
 - Assigns new faces with k-NN over confirmed faces and an optional linear SVM trained from corrections.
 - Groups the gallery by year from EXIF dates instead of rebuilding a Years folder. Photos without a usable date fall into one Date unknown group.
+- Keeps indexing progress, failures, and job history in a floating bottom-left status dock, so the gallery stays edge-to-edge.
 - Uses zero-shot labels to identify documents and screenshots without a separate classifier. People and Documents are the primary browse modes.
 - Exports full-photo copies into a people-first tree, with documents and unknown as fallbacks. Every copy is recorded in `.clusterlens/manifest.jsonl`.
 - Resets the index, thumbnails, classifier models, and export history from Settings without touching the source folders or exported copies.

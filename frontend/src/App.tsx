@@ -46,9 +46,11 @@ function ThemedToaster() {
     return (
         <Toaster
             theme={theme}
-            position='bottom-right'
+            position='bottom-left'
             richColors
             closeButton
+            offset={{ bottom: 64, left: 16 }}
+            mobileOffset={{ bottom: 68, left: 12 }}
             toastOptions={{ className: 'sonner-toast' }}
         />
     );
