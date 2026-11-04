@@ -7,6 +7,7 @@ import { TooltipProvider } from '@/components/ui';
 import { useJobStream } from '@/lib/hooks';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 import { ExportPage } from '@/pages/ExportPage';
+import { FaceReviewPage } from '@/pages/FaceReviewPage';
 import { GalleryPage } from '@/pages/GalleryPage';
 import { PeoplePage, PersonPage } from '@/pages/PeoplePages';
 import { PhotoPage } from '@/pages/PhotoPage';
@@ -56,6 +57,7 @@ export default function App() {
                                 <Route path='people' element={<PeoplePage />} />
                                 <Route path='people/:id' element={<PersonPage />} />
                                 <Route path='review' element={<ReviewPage />} />
+                                <Route path='review/faces' element={<FaceReviewPage />} />
                                 <Route path='sources' element={<SourcesPage />} />
                                 <Route path='export' element={<ExportPage />} />
                                 <Route path='settings' element={<SettingsPage />} />

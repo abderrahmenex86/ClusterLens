@@ -1475,6 +1475,30 @@ def ignore_cluster(cluster_id: int, request: Request):
     return {"status": "ok"}
 
 
+@router.get("/review/faces")
+def review_faces(
+    request: Request,
+    limit: int = Query(120, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    database = db(request)
+    where = "f.person_id IS NULL AND f.ignored_at IS NULL"
+    total = int(database.scalar(f"SELECT COUNT(*) FROM faces f WHERE {where}") or 0)
+    rows = database.query(
+        "SELECT f.*, p.name AS person_name FROM faces f "
+        "LEFT JOIN people p ON p.id = f.person_id "
+        f"WHERE {where} "
+        "ORDER BY (f.assignment_confidence IS NULL) DESC, "
+        "f.assignment_confidence ASC, f.det_score DESC, f.id ASC "
+        "LIMIT ? OFFSET ?",
+        (limit, offset),
+    )
+    return {
+        "items": [_face_row(row, include_person=True) for row in rows],
+        "total": total,
+    }
+
+
 @router.get("/review")
 def review(request: Request):
     database = db(request)

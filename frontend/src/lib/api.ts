@@ -272,6 +272,7 @@ export const api = {
     jobs: (limit = 50) => request<{ items: Job[] }>(`/jobs?limit=${limit}`),
     job: (id: number) => request<Job>(`/jobs/${id}`),
     jobItems: (id: number) => request<{ items: { entityType: string; entityId: number; message: string; createdAt: string }[] }>(`/jobs/${id}/items`),
+    analyzeNow: () => request<{ jobId: number }>('/jobs/analyze', { method: 'POST' }),
     pauseJob: (id: number) => request<{ status: string }>(`/jobs/${id}/pause`, { method: 'POST' }),
     resumeJob: (id: number) => request<{ status: string }>(`/jobs/${id}/resume`, { method: 'POST' }),
     cancelJob: (id: number) => request<{ status: string }>(`/jobs/${id}/cancel`, { method: 'POST' }),
@@ -359,6 +360,8 @@ export const api = {
         }),
     ignoreCluster: (id: number) => request<{ status: string }>(`/clusters/${id}/ignore`, { method: 'POST' }),
     review: () => request<ReviewQueue>('/review'),
+    reviewFaces: (limit = 120, offset = 0) =>
+        request<{ items: Face[]; total: number }>(`/review/faces${query({ limit, offset })}`),
 
     classifier: () => request<ClassifierStatus>('/classifier'),
     trainClassifier: () => request<{ jobId: number }>('/classifier/train', { method: 'POST' }),

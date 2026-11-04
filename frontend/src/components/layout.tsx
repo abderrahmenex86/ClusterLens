@@ -220,10 +220,10 @@ function Sidebar() {
                             <Images size={15} /> All photos
                             <span className='ml-auto text-[11px] tabular-nums text-muted'>{stats?.visibleImages ?? stats?.images ?? 0}</span>
                         </SidebarLink>
-                        <SidebarLink to='/?unsorted=true' active={searchParams.get('unsorted') === 'true'}>
+                        <SidebarLink to='/review' active={location.pathname.startsWith('/review')}>
                             <CircleAlert size={15} /> Needs review
                             <span className='ml-auto text-[11px] tabular-nums text-muted'>
-                                {stats?.unsortedFaces ?? 0}
+                                {(review?.proposedPeople ?? 0) + (stats?.unsortedFaces ?? 0)}
                             </span>
                         </SidebarLink>
 
@@ -321,12 +321,6 @@ function Sidebar() {
                         </Section>
 
                         <Separator className='my-3' />
-                        <SidebarLink to='/review'>
-                            <Sparkles size={15} /> Review
-                            {!!review && review.proposedPeople + review.unsortedFaces > 0 && (
-                                <Badge className='ml-auto'>{review.proposedPeople + review.unsortedFaces}</Badge>
-                            )}
-                        </SidebarLink>
                         <SidebarLink to='/people'>
                             <Users size={15} /> People directory
                         </SidebarLink>

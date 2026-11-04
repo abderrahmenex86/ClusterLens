@@ -72,6 +72,14 @@ export function useReview() {
     });
 }
 
+export function useReviewFaces(limit = 120) {
+    return useQuery({
+        queryKey: ['review-faces', limit],
+        queryFn: () => api.reviewFaces(limit),
+        refetchInterval: 5000,
+    });
+}
+
 export function useClusters() {
     return useQuery({
         queryKey: ['clusters'],

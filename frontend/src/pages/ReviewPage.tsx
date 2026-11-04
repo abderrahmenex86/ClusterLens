@@ -1,11 +1,11 @@
-import { Check, Loader2, RefreshCw, Sparkles, UserPlus, Users, X } from 'lucide-react';
+import { Loader2, RefreshCw, Sparkles, UserPlus, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { api } from '@/lib/api';
-import { useClassifier, useClusters, usePeople, useReview, useStats } from '@/lib/hooks';
+import { useClassifier, useClusters, useJobs, usePeople, useReview, useStats } from '@/lib/hooks';
 import {
     Badge,
     Button,
@@ -14,7 +14,7 @@ import {
     Progress,
     Skeleton,
 } from '@/components/ui';
-import { EmptyState, FaceThumb, PageHeader, PersonPicker } from '@/components/common';
+import { EmptyState, PageHeader, PersonPicker } from '@/components/common';
 
 export function ReviewPage() {
     const queryClient = useQueryClient();
@@ -23,12 +23,18 @@ export function ReviewPage() {
     const { data: classifier } = useClassifier();
     const { data: people } = usePeople();
     const { data: stats } = useStats();
+    const { data: jobs } = useJobs();
     const [index, setIndex] = useState(0);
     const [name, setName] = useState('');
     const [busy, setBusy] = useState(false);
-    const [mergeOpen, setMergeOpen] = useState(false);
 
     const proposals = clusters?.items ?? [];
+    const pendingAnalysis = stats?.pendingImages ?? 0;
+    const analysisActive = (jobs?.items ?? []).some(
+        (job) =>
+            ['analyze', 'thumbnail'].includes(job.type) &&
+            ['queued', 'running', 'paused'].includes(job.status)
+    );
     const current = proposals[Math.min(index, Math.max(0, proposals.length - 1))];
 
     useEffect(() => {
@@ -39,6 +45,7 @@ export function ReviewPage() {
         await Promise.all([
             refetch(),
             queryClient.invalidateQueries({ queryKey: ['review'] }),
+            queryClient.invalidateQueries({ queryKey: ['review-faces'] }),
             queryClient.invalidateQueries({ queryKey: ['stats'] }),
             queryClient.invalidateQueries({ queryKey: ['people'] }),
             queryClient.invalidateQueries({ queryKey: ['classifier'] }),
@@ -61,7 +68,6 @@ export function ReviewPage() {
                     : `Created ${personName} with ${result.faces} faces`
             );
             setName('');
-            setMergeOpen(false);
             await refreshAll();
         } catch (reason) {
             toast.error(reason instanceof Error ? reason.message : 'Could not accept proposal');
@@ -91,6 +97,19 @@ export function ReviewPage() {
             await refreshAll();
         } catch (reason) {
             toast.error(reason instanceof Error ? reason.message : 'Could not recluster');
+        }
+    }
+
+    async function continueAnalysis() {
+        try {
+            await api.analyzeNow();
+            toast.success('Analysis queued');
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+                queryClient.invalidateQueries({ queryKey: ['stats'] }),
+            ]);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not queue analysis');
         }
     }
 
@@ -128,26 +147,89 @@ export function ReviewPage() {
                             ))}
                         </div>
                     ) : !current ? (
-                        <EmptyState
-                            icon={<Sparkles size={20} />}
-                            title={review?.unsortedFaces ? 'No cluster proposals right now' : 'Nothing to review yet'}
-                            description={
-                                review?.unsortedFaces
-                                    ? `${review.unsortedFaces} unsorted faces are waiting. Review them individually, or recluster when more photos are indexed.`
-                                    : 'Add folders and let analysis finish. Proposed people will appear here.'
-                            }
-                            action={
-                                review?.unsortedFaces ? (
-                                    <Button asChild variant='secondary'>
-                                        <Link to='/?unsorted=true'>Review unsorted faces</Link>
+                        pendingAnalysis > 0 ? (
+                            <div className='rounded-3xl border border-line bg-surface p-6'>
+                                <div className='flex items-start gap-4'>
+                                    <span className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent'>
+                                        {analysisActive ? (
+                                            <Loader2 size={20} className='animate-spin' />
+                                        ) : (
+                                            <Sparkles size={20} />
+                                        )}
+                                    </span>
+                                    <div>
+                                        <h2 className='text-lg font-semibold'>
+                                            {analysisActive ? 'Analysis is running' : 'Analysis is incomplete'}
+                                        </h2>
+                                        <p className='mt-1 max-w-xl text-sm leading-6 text-muted'>
+                                            {stats?.visibleImages.toLocaleString()} of{' '}
+                                            {stats?.images.toLocaleString()} photos are ready, with{' '}
+                                            {pendingAnalysis.toLocaleString()} still waiting. Cluster proposals appear
+                                            after analysis; the current {review?.unsortedFaces ?? 0} unsorted faces are
+                                            too few or too varied to group yet.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Progress
+                                    className='mt-5'
+                                    value={
+                                        stats?.images
+                                            ? (stats.visibleImages / stats.images) * 100
+                                            : 0
+                                    }
+                                />
+                                <div className='mt-5 flex flex-wrap gap-2'>
+                                    <Button onClick={continueAnalysis} disabled={analysisActive}>
+                                        {analysisActive ? (
+                                            <Loader2 size={15} className='animate-spin' />
+                                        ) : (
+                                            <Sparkles size={15} />
+                                        )}
+                                        {analysisActive ? 'Analysis running' : 'Continue analysis'}
                                     </Button>
-                                ) : (
                                     <Button asChild variant='secondary'>
-                                        <Link to='/sources'>Add folders</Link>
+                                        <Link to='/review/faces'>
+                                            Review {review?.unsortedFaces ?? 0} unsorted faces
+                                        </Link>
                                     </Button>
-                                )
-                            }
-                        />
+                                </div>
+                            </div>
+                        ) : (
+                            <EmptyState
+                                icon={<Sparkles size={20} />}
+                                title={
+                                    review?.unsortedFaces
+                                        ? 'No cluster proposals right now'
+                                        : 'Nothing to review yet'
+                                }
+                                description={
+                                    review?.unsortedFaces
+                                        ? `${review.unsortedFaces} unsorted faces are waiting. The clustering pass did not find repeated identities among them. Review the faces individually, or lower the minimum cluster size in Settings and recluster.`
+                                        : 'Add folders and let analysis finish. Proposed people will appear here.'
+                                }
+                                action={
+                                    <div className='flex flex-wrap justify-center gap-2'>
+                                        {review?.unsortedFaces ? (
+                                            <>
+                                                <Button asChild>
+                                                    <Link to='/review/faces'>Review unsorted faces</Link>
+                                                </Button>
+                                                <Button variant='secondary' onClick={recluster}>
+                                                    <RefreshCw size={14} /> Recluster
+                                                </Button>
+                                                <Button asChild variant='ghost'>
+                                                    <Link to='/settings'>Clustering settings</Link>
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <Button asChild variant='secondary'>
+                                                <Link to='/sources'>Add folders</Link>
+                                            </Button>
+                                        )}
+                                    </div>
+                                }
+                            />
+                        )
                     ) : (
                         <div>
                             <div className='flex items-center justify-between gap-3'>
@@ -181,7 +263,6 @@ export function ReviewPage() {
                                         value={name}
                                         onChange={(event) => setName(event.target.value)}
                                         placeholder='Name this person…'
-                                        autoFocus
                                         onKeyDown={(event) => {
                                             if (event.key === 'Enter') void accept();
                                         }}
@@ -194,10 +275,7 @@ export function ReviewPage() {
                                     </Button>
                                     <PersonPicker
                                         people={people?.items ?? []}
-                                        onSelect={(person) => {
-                                            setMergeOpen(false);
-                                            void accept(person.id, person.name);
-                                        }}
+                                        onSelect={(person) => void accept(person.id, person.name)}
                                         trigger={
                                             <Button variant='outline' disabled={busy}>
                                                 <Users size={15} /> Merge into…
@@ -263,7 +341,7 @@ export function ReviewPage() {
                             <QueueRow label='People confirmed' value={stats?.people ?? 0} />
                         </div>
                         <Button asChild variant='ghost' size='sm' className='mt-3 w-full justify-start'>
-                            <Link to='/?unsorted=true'>Open unsorted faces</Link>
+                            <Link to='/review/faces'>Open unsorted faces</Link>
                         </Button>
                     </div>
 

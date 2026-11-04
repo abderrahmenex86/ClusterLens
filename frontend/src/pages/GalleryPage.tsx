@@ -157,7 +157,7 @@ export function GalleryPage() {
                         </Button>
                         <Button asChild size='sm' variant='secondary'>
                             <Link to={q ? `/?q=${encodeURIComponent(q)}` : '/?unsorted=true'}>
-                                <Filter size={14} /> {q ? 'Filters' : 'Unsorted'}
+                                <Filter size={14} /> {q ? 'Filters' : 'Unsorted photos'}
                             </Link>
                         </Button>
                     </>
