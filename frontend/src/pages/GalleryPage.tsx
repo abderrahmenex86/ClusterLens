@@ -1,6 +1,7 @@
 import { Filter, ImageOff, Loader2, Plus, Search, Sparkles, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 
 import { api, ApiError, type ImageSummary } from '@/lib/api';
 import { usePeople, useSources, useStats } from '@/lib/hooks';
@@ -32,7 +33,6 @@ export function GalleryPage() {
     const [mobileQuery, setMobileQuery] = useState('');
     const { data: people } = usePeople();
     const { data: sources } = useSources();
-    const [limit, setLimit] = useState(PAGE_SIZE);
 
     const q = searchParams.get('q') ?? '';
     const personId = searchParams.get('person');
@@ -57,44 +57,53 @@ export function GalleryPage() {
     );
 
     useEffect(() => {
-        setLimit(PAGE_SIZE);
         setMobileQuery(q);
-    }, [q, personId, scene, year, sourceId, unsorted]);
+    }, [q]);
 
     const [items, setItems] = useState<ImageSummary[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<unknown>(null);
+
+    async function fetchPage(offset: number): Promise<{ items: ImageSummary[]; total: number }> {
+        if (q) {
+            const result = await api.search({
+                q,
+                personId: filters.personId,
+                scene,
+                sourceId: filters.sourceId,
+                year,
+                limit: PAGE_SIZE,
+                offset,
+            });
+            return { items: result.items.map((item) => item.image), total: result.total };
+        }
+        const result = await api.images({
+            personId: filters.personId,
+            scene,
+            sourceId: filters.sourceId,
+            year,
+            unsorted: filters.unsorted,
+            limit: PAGE_SIZE,
+            offset,
+        });
+        return { items: result.items, total: result.total };
+    }
 
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
+        setLoadingMore(false);
         setError(null);
+        setItems([]);
+        setTotal(0);
 
-        const request = q
-            ? api.search({ q, personId: filters.personId, scene, sourceId: filters.sourceId, year, limit, offset: 0 })
-            : api.images({
-                  personId: filters.personId,
-                  scene,
-                  sourceId: filters.sourceId,
-                  year,
-                  unsorted: filters.unsorted,
-                  limit,
-                  offset: 0,
-              });
-
-        request
-            .then((result) => {
+        fetchPage(0)
+            .then((page) => {
                 if (cancelled) return;
-                if ('items' in result && result.items.length && 'image' in result.items[0]) {
-                    const searchItems = result.items as { image: ImageSummary; score: number }[];
-                    setItems(searchItems.map((item) => item.image));
-                    setTotal(result.total);
-                } else {
-                    const imageItems = result.items as ImageSummary[];
-                    setItems(imageItems);
-                    setTotal(result.total);
-                }
+                setItems(page.items);
+                setTotal(page.total);
             })
             .catch((reason) => {
                 if (!cancelled) setError(reason);
@@ -106,7 +115,36 @@ export function GalleryPage() {
         return () => {
             cancelled = true;
         };
-    }, [q, filters, scene, year, limit]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [q, filters, scene, year]);
+
+    async function loadMore() {
+        if (loadingMore || items.length >= total) return;
+        setLoadingMore(true);
+        try {
+            const page = await fetchPage(items.length);
+            setItems((current) => [...current, ...page.items]);
+            setTotal(page.total);
+        } catch (reason) {
+            toast.error(reason instanceof Error ? reason.message : 'Could not load more photos');
+        } finally {
+            setLoadingMore(false);
+        }
+    }
+
+    async function reload() {
+        setLoading(true);
+        setError(null);
+        try {
+            const page = await fetchPage(0);
+            setItems(page.items);
+            setTotal(page.total);
+        } catch (reason) {
+            setError(reason);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     function removeFilter(key: string) {
         const next = new URLSearchParams(searchParams);
@@ -223,7 +261,7 @@ export function GalleryPage() {
                         title='Could not load the library'
                         description={error instanceof Error ? error.message : 'The local API did not respond.'}
                         action={
-                            <Button variant='secondary' onClick={() => setLimit((value) => value + PAGE_SIZE)}>
+                            <Button variant='secondary' onClick={reload}>
                                 Retry
                             </Button>
                         }
@@ -286,7 +324,8 @@ export function GalleryPage() {
                         </div>
                         {items.length < total && (
                             <div className='flex justify-center py-8'>
-                                <Button variant='secondary' onClick={() => setLimit((value) => value + PAGE_SIZE)}>
+                                <Button variant='secondary' onClick={loadMore} disabled={loadingMore}>
+                                    {loadingMore ? <Loader2 size={15} className='animate-spin' /> : null}
                                     Load more
                                 </Button>
                             </div>
