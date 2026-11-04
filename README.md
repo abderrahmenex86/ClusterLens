@@ -42,7 +42,7 @@ Set `CLUSTERLENS_DATA_DIR` to choose where the SQLite database, thumbnails, face
 
 Adding a source queues a background scan. The scanner hashes files, links exact duplicates to one image, and marks missing files without deleting their metadata. An analysis job then generates thumbnails, extracts face boxes and 512-D embeddings, computes a SigLIP image embedding, and stores zero-shot scene labels.
 
-New faces first go through k-NN against confirmed faces. If a classifier is trained, its probability is used as a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal is what creates a person. Corrections are logged and can trigger a classifier retrain.
+New faces first go through k-NN against confirmed faces. If a classifier is trained, its probability is used as a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal is what creates a person. Corrections are logged, a face moved away from a person becomes a cannot-link for that person, and enough corrections queue a classifier retrain.
 
 Search embeds the query with SigLIP and compares it to the image matrix with cosine similarity. At this library size, a matrix multiply is enough; a vector database is deliberately not part of the stack.
 
@@ -62,7 +62,7 @@ No vector database, no cloud queue, no hosted demo. SQLite in WAL mode, two back
 - Dates come from EXIF only. Recovered file mtimes are treated as unreliable, so most photos show an unknown date instead of a made-up one.
 - The folder watcher is not wired yet. Adding a source scans it; new files need a rescan until the watcher lands.
 - Manual face creation and a drag-and-drop box editor are not there yet. A selected face can be reassigned, ignored, or corrected through numeric box coordinates, which re-embeds the face.
-- Events are represented in the export hierarchy but not inferred yet.
+- Events are reserved in the export shape but not inferred yet.
 - The interface is desktop-first. Mobile has a compact nav, not the full two-sidebar workflow.
 - There is no authentication. That is appropriate for a localhost tool and not for a shared machine.
 

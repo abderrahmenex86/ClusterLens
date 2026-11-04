@@ -537,14 +537,33 @@ class Services:
         low = float(self.db.get_setting("knn_low", "0.35") or 0.35)
         svm_bundle = self._load_active_classifier()
 
+        # A face moved away from a person is a per-face cannot-link. It should
+        # not be immediately reassigned to that same person by k-NN or SVM.
+        blocked: dict[int, set[int]] = {}
+        for correction in self.db.query(
+            "SELECT fc.face_id, fc.old_person_id FROM face_corrections fc "
+            "JOIN (SELECT face_id, MAX(id) AS max_id FROM face_corrections "
+            "WHERE action = 'label' GROUP BY face_id) latest ON latest.max_id = fc.id "
+            "WHERE fc.old_person_id IS NOT NULL "
+            "AND (fc.new_person_id IS NULL OR fc.new_person_id != fc.old_person_id)"
+        ):
+            blocked.setdefault(int(correction["face_id"]), set()).add(
+                int(correction["old_person_id"])
+            )
+
         for index, row in enumerate(unassigned, start=1):
             ctx.checkpoint()
+            face_id = int(row["id"])
             vector = np.frombuffer(row["embedding"], dtype=np.float32)
             scores = matrix @ vector
             person_scores = {
                 int(person): float(scores[labels == person].max())
                 for person in unique_people
+                if int(person) not in blocked.get(face_id, set())
             }
+            if not person_scores:
+                ctx.progress(index, total, f"Assigning faces · {index}/{total}")
+                continue
             best_person, best_score = max(person_scores.items(), key=lambda item: item[1])
 
             source = None
@@ -563,8 +582,10 @@ class Services:
                     threshold = float(
                         self.db.get_setting("classifier_threshold", "0.75") or 0.75
                     )
-                    if svm_score >= threshold and (
-                        best_score < low or svm_person == best_person
+                    if (
+                        svm_score >= threshold
+                        and svm_person in person_scores
+                        and (best_score < low or svm_person == best_person)
                     ):
                         chosen = svm_person
                         confidence = svm_score

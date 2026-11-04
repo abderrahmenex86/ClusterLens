@@ -1050,6 +1050,38 @@ def person_faces(person_id: int, request: Request, limit: int = Query(100, ge=1,
     return {"items": [_face_row(row, include_person=True) for row in rows]}
 
 
+def _maybe_enqueue_training(database) -> None:
+    threshold = int(database.get_setting("auto_retrain_after", "50") or 50)
+    if threshold <= 0:
+        return
+    last = database.query_one(
+        "SELECT trained_at FROM classifier_runs WHERE active = 1 "
+        "ORDER BY trained_at DESC LIMIT 1"
+    )
+    if last is None:
+        corrections = int(database.scalar("SELECT COUNT(*) FROM face_corrections") or 0)
+    else:
+        corrections = int(
+            database.scalar(
+                "SELECT COUNT(*) FROM face_corrections WHERE created_at > ?",
+                (last["trained_at"],),
+            )
+            or 0
+        )
+    if corrections < threshold:
+        return
+    trainable = int(
+        database.scalar(
+            "SELECT COUNT(*) FROM (SELECT person_id FROM faces "
+            "WHERE person_id IS NOT NULL AND ignored_at IS NULL "
+            "GROUP BY person_id HAVING COUNT(*) >= 2)"
+        )
+        or 0
+    )
+    if trainable >= 2:
+        enqueue_job(database, "train_classifier", "ml", priority=30)
+
+
 def _assign_faces(database, person_id: int, face_ids: list[int]) -> None:
     if not face_ids:
         return
@@ -1069,6 +1101,7 @@ def _assign_faces(database, person_id: int, face_ids: list[int]) -> None:
             "VALUES (?, 'label', ?, ?, ?)",
             (face_id, old["person_id"], person_id, now),
         )
+    _maybe_enqueue_training(database)
 
 
 @router.patch("/faces/{face_id}")
@@ -1132,6 +1165,7 @@ def patch_face(face_id: int, payload: FacePatch, request: Request):
             priority=60,
         )
 
+    _maybe_enqueue_training(database)
     updated = database.query_one(
         "SELECT f.*, p.name AS person_name FROM faces f LEFT JOIN people p ON p.id = f.person_id "
         "WHERE f.id = ?",
@@ -1161,6 +1195,7 @@ def bulk_faces(payload: FaceBulk, request: Request):
         )
     else:
         raise HTTPException(422, "Unknown action")
+    _maybe_enqueue_training(database)
     return {"status": "ok", "count": len(payload.face_ids)}
 
 
@@ -1293,6 +1328,7 @@ def accept_cluster(cluster_id: int, payload: ClusterAccept, request: Request):
     database.execute(
         "UPDATE clusters SET accepted_person_id = ? WHERE id = ?", (person_id, cluster_id)
     )
+    _maybe_enqueue_training(database)
     person = database.query_one("SELECT * FROM people WHERE id = ?", (person_id,))
     return {"person": _person_row(person, database), "faces": len(face_rows)}
 
