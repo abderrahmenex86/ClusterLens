@@ -4,10 +4,26 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { api, ApiError, type ImageSummary } from '@/lib/api';
 import { usePeople, useSources, useStats } from '@/lib/hooks';
+import { cn } from '@/lib/utils';
 import { Badge, Button, Input, Skeleton } from '@/components/ui';
 import { EmptyState, ImageTile, PageHeader } from '@/components/common';
 
 const PAGE_SIZE = 60;
+
+const TILE_SPANS = [
+    'col-span-2 row-span-2',
+    'row-span-2',
+    '',
+    'col-span-2',
+    'row-span-2',
+    '',
+    'col-span-2 row-span-2',
+    'row-span-2',
+    '',
+    'col-span-2',
+    '',
+    'row-span-2',
+];
 
 export function GalleryPage() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -211,9 +227,12 @@ export function GalleryPage() {
                         }
                     />
                 ) : loading && !items.length ? (
-                    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'>
+                    <div className='-mx-6 grid auto-rows-[110px] grid-flow-row-dense grid-cols-2 sm:auto-rows-[140px] sm:grid-cols-3 lg:auto-rows-[170px] lg:grid-cols-4 xl:grid-cols-5 2xl:auto-rows-[190px] 2xl:grid-cols-6'>
                         {Array.from({ length: 18 }).map((_, index) => (
-                            <Skeleton key={index} className='aspect-square' />
+                            <Skeleton
+                                key={index}
+                                className={cn('h-full w-full rounded-none', TILE_SPANS[index % TILE_SPANS.length])}
+                            />
                         ))}
                     </div>
                 ) : !stats?.sources ? (
@@ -254,9 +273,13 @@ export function GalleryPage() {
                     />
                 ) : (
                     <>
-                        <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'>
-                            {items.map((image) => (
-                                <ImageTile key={image.id} image={image} />
+                        <div className='-mx-6 grid auto-rows-[110px] grid-flow-row-dense grid-cols-2 sm:auto-rows-[140px] sm:grid-cols-3 lg:auto-rows-[170px] lg:grid-cols-4 xl:grid-cols-5 2xl:auto-rows-[190px] 2xl:grid-cols-6'>
+                            {items.map((image, index) => (
+                                <ImageTile
+                                    key={image.id}
+                                    image={image}
+                                    className={TILE_SPANS[index % TILE_SPANS.length]}
+                                />
                             ))}
                         </div>
                         {items.length < total && (

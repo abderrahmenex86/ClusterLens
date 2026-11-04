@@ -1199,6 +1199,18 @@ class Services:
     def stats(self) -> dict[str, Any]:
         counts = {
             "images": int(self.db.scalar("SELECT COUNT(*) FROM images") or 0),
+            "visibleImages": int(
+                self.db.scalar(
+                    "SELECT COUNT(*) FROM images WHERE thumb_at IS NOT NULL"
+                )
+                or 0
+            ),
+            "pendingImages": int(
+                self.db.scalar(
+                    "SELECT COUNT(*) FROM images WHERE thumb_at IS NULL"
+                )
+                or 0
+            ),
             "faces": int(
                 self.db.scalar("SELECT COUNT(*) FROM faces WHERE ignored_at IS NULL") or 0
             ),

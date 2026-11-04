@@ -49,21 +49,38 @@ export function EmptyState({
     );
 }
 
-export function ImageTile({ image, score }: { image: ImageSummary; score?: number }) {
+export function ImageTile({
+    image,
+    score,
+    className,
+}: {
+    image: ImageSummary;
+    score?: number;
+    className?: string;
+}) {
+    const [failed, setFailed] = useState(false);
     return (
         <Link
             to={`/photo/${image.id}`}
-            className='group relative block overflow-hidden rounded-2xl border border-line bg-surface-strong/40 shadow-soft transition-transform duration-200 hover:-translate-y-0.5'
+            className={cn(
+                'group relative block overflow-hidden bg-surface-strong transition-opacity duration-200 hover:opacity-90',
+                className
+            )}
         >
-            <div className='aspect-square w-full overflow-hidden bg-surface-strong'>
-                <img
-                    src={image.thumbnailUrl}
-                    alt={`Photo${image.people.length ? ` of ${image.people.map((person) => person.name).join(', ')}` : ''}`}
-                    loading='lazy'
-                    className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]'
-                />
+            <div className='flex h-full w-full items-center justify-center overflow-hidden bg-surface-strong'>
+                {failed ? (
+                    <ImageOff size={18} className='text-muted/60' />
+                ) : (
+                    <img
+                        src={image.thumbnailUrl}
+                        alt={`Photo${image.people.length ? ` of ${image.people.map((person) => person.name).join(', ')}` : ''}`}
+                        loading='lazy'
+                        onError={() => setFailed(true)}
+                        className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]'
+                    />
+                )}
             </div>
-            <div className='pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100' />
+            <div className='pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100' />
             <div className='absolute inset-x-0 bottom-0 hidden items-end justify-between gap-2 p-3 text-white group-hover:flex'>
                 <div className='min-w-0'>
                     {image.people.length > 0 ? (
@@ -77,18 +94,18 @@ export function ImageTile({ image, score }: { image: ImageSummary; score?: numbe
                     )}
                 </div>
                 {image.faceCount > 0 && (
-                    <span className='rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur'>
+                    <span className='rounded-sm bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur'>
                         {image.faceCount} face{image.faceCount === 1 ? '' : 's'}
                     </span>
                 )}
             </div>
             {typeof score === 'number' && (
-                <span className='absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur'>
+                <span className='absolute left-2 top-2 rounded-sm bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur'>
                     {(score * 100).toFixed(0)}% match
                 </span>
             )}
             {image.unsortedFaceCount > 0 && (
-                <span className='absolute right-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-ink'>
+                <span className='absolute right-2 top-2 rounded-sm bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-ink'>
                     {image.unsortedFaceCount}
                 </span>
             )}

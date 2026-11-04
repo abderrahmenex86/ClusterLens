@@ -15,7 +15,7 @@ export default defineConfig({
         strictPort: true,
         proxy: {
             '/api': {
-                target: 'http://127.0.0.1:8765',
+                target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8765',
                 changeOrigin: true,
             },
         },

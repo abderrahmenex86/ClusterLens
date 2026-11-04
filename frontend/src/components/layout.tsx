@@ -218,7 +218,7 @@ function Sidebar() {
                     <div className='flex flex-col gap-0.5 pb-4'>
                         <SidebarLink to='/' active={location.pathname === '/' && !searchParams.toString()}>
                             <Images size={15} /> All photos
-                            <span className='ml-auto text-[11px] tabular-nums text-muted'>{stats?.images ?? 0}</span>
+                            <span className='ml-auto text-[11px] tabular-nums text-muted'>{stats?.visibleImages ?? stats?.images ?? 0}</span>
                         </SidebarLink>
                         <SidebarLink to='/?unsorted=true' active={searchParams.get('unsorted') === 'true'}>
                             <CircleAlert size={15} /> Needs review
@@ -624,7 +624,7 @@ function StatusBar() {
                     </button>
                 </div>
                 <div className='hidden items-center gap-4 sm:flex'>
-                    <span>{stats?.images ?? 0} photos</span>
+                    <span>{stats?.visibleImages ?? stats?.images ?? 0} photos</span>
                     <span>{stats?.people ?? 0} people</span>
                     <span>{stats?.faces ?? 0} faces</span>
                     <span>{stats?.unsortedFaces ?? 0} to review</span>

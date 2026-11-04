@@ -121,6 +121,8 @@ export type TimelineYear = {
 
 export type Stats = {
     images: number;
+    visibleImages: number;
+    pendingImages: number;
     faces: number;
     people: number;
     unsortedFaces: number;

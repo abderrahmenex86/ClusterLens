@@ -694,7 +694,10 @@ def list_images(
     offset: int = Query(0, ge=0),
 ):
     database = db(request)
-    clauses = ["EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL)"]
+    clauses = [
+        "i.thumb_at IS NOT NULL",
+        "EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL)",
+    ]
     params: list[Any] = []
     if person_id is not None:
         clauses.append(
