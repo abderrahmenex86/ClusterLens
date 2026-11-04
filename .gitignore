@@ -46,8 +46,6 @@ notebook.py
 .env.*
 *.h5
 *.ipynb
-*.jpg
-*.json
 *.log
 *.npy
 *.npz

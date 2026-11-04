@@ -1,0 +1,270 @@
+import { HardDrive, Loader2, Moon, ShieldCheck, Sparkles, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+
+import { api, formatBytes } from '@/lib/api';
+import { useClassifier, useSettings, useStats } from '@/lib/hooks';
+import { useTheme } from '@/lib/theme';
+import { Badge, Button, Input, Label, Separator, Switch } from '@/components/ui';
+import { PageHeader } from '@/components/common';
+
+export function SettingsPage() {
+    const queryClient = useQueryClient();
+    const { data: settings, refetch } = useSettings();
+    const { data: classifier } = useClassifier();
+    const { data: stats } = useStats();
+    const { data: info } = useQuery({ queryKey: ['system-info'], queryFn: api.systemInfo });
+    const { theme, toggle } = useTheme();
+    const [values, setValues] = useState<Record<string, string>>({});
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        if (settings) setValues(settings);
+    }, [settings]);
+
+    function update(key: string, value: string) {
+        setValues((current) => ({ ...current, [key]: value }));
+    }
+
+    async function save() {
+        setBusy(true);
+        try {
+            await api.patchSettings(values);
+            toast.success('Settings saved');
+            await refetch();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not save settings');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function recluster() {
+        try {
+            await api.recluster();
+            toast.success('Reclustering queued');
+            await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not recluster');
+        }
+    }
+
+    async function train() {
+        try {
+            await api.trainClassifier();
+            toast.success('Classifier training queued');
+            await queryClient.invalidateQueries({ queryKey: ['classifier'] });
+            await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not train classifier');
+        }
+    }
+
+    return (
+        <div className='pb-12'>
+            <PageHeader
+                title='Settings'
+                subtitle='Thresholds, model profile, and local storage. Everything runs on this machine.'
+            />
+
+            <div className='grid gap-5 px-6 lg:grid-cols-[minmax(0,1fr)_340px]'>
+                <div className='space-y-5'>
+                    <section className='rounded-3xl border border-line bg-surface p-5'>
+                        <h2 className='text-sm font-semibold'>Face assignment</h2>
+                        <p className='mt-1 text-xs leading-5 text-muted'>
+                            k-NN runs on every new face. The classifier is a second opinion and a batch assigner.
+                        </p>
+                        <div className='mt-4 grid gap-4 sm:grid-cols-2'>
+                            <Field label='Auto-assign above' hint='Cosine similarity (0–1)'>
+                                <Input
+                                    type='number'
+                                    step='0.01'
+                                    min='0'
+                                    max='1'
+                                    value={values.knn_high ?? ''}
+                                    onChange={(event) => update('knn_high', event.target.value)}
+                                />
+                            </Field>
+                            <Field label='Review below' hint='Below this, a face stays Unsorted'>
+                                <Input
+                                    type='number'
+                                    step='0.01'
+                                    min='0'
+                                    max='1'
+                                    value={values.knn_low ?? ''}
+                                    onChange={(event) => update('knn_low', event.target.value)}
+                                />
+                            </Field>
+                            <Field label='Classifier threshold' hint='Probability required to auto-assign'>
+                                <Input
+                                    type='number'
+                                    step='0.01'
+                                    min='0'
+                                    max='1'
+                                    value={values.classifier_threshold ?? ''}
+                                    onChange={(event) => update('classifier_threshold', event.target.value)}
+                                />
+                            </Field>
+                            <Field label='Retrain after corrections' hint='Queue training after this many corrections'>
+                                <Input
+                                    type='number'
+                                    step='1'
+                                    min='1'
+                                    value={values.auto_retrain_after ?? ''}
+                                    onChange={(event) => update('auto_retrain_after', event.target.value)}
+                                />
+                            </Field>
+                        </div>
+                    </section>
+
+                    <section className='rounded-3xl border border-line bg-surface p-5'>
+                        <h2 className='text-sm font-semibold'>Clustering</h2>
+                        <p className='mt-1 text-xs leading-5 text-muted'>
+                            HDBSCAN proposes people from unsorted faces. It never overwrites confirmed labels.
+                        </p>
+                        <div className='mt-4 grid gap-4 sm:grid-cols-2'>
+                            <Field label='Minimum cluster size' hint='Faces required for a proposed person'>
+                                <Input
+                                    type='number'
+                                    min='2'
+                                    value={values.cluster_min_size ?? ''}
+                                    onChange={(event) => update('cluster_min_size', event.target.value)}
+                                />
+                            </Field>
+                            <Field label='Minimum samples' hint='Higher means stricter, more noise'>
+                                <Input
+                                    type='number'
+                                    min='1'
+                                    value={values.cluster_min_samples ?? ''}
+                                    onChange={(event) => update('cluster_min_samples', event.target.value)}
+                                />
+                            </Field>
+                            <Field label='Minimum face size (px)' hint='Faces smaller than this are not clustered'>
+                                <Input
+                                    type='number'
+                                    min='16'
+                                    value={values.face_min_size ?? ''}
+                                    onChange={(event) => update('face_min_size', event.target.value)}
+                                />
+                            </Field>
+                            <Field label='Minimum detection score' hint='InsightFace detector confidence'>
+                                <Input
+                                    type='number'
+                                    step='0.05'
+                                    min='0'
+                                    max='1'
+                                    value={values.face_min_det_score ?? ''}
+                                    onChange={(event) => update('face_min_det_score', event.target.value)}
+                                />
+                            </Field>
+                        </div>
+                        <div className='mt-4 flex gap-2'>
+                            <Button onClick={save} disabled={busy}>
+                                {busy ? <Loader2 size={15} className='animate-spin' /> : null}
+                                Save settings
+                            </Button>
+                            <Button variant='outline' onClick={recluster}>
+                                <Sparkles size={15} /> Recluster now
+                            </Button>
+                        </div>
+                    </section>
+
+                    <section className='rounded-3xl border border-line bg-surface p-5'>
+                        <h2 className='text-sm font-semibold'>Appearance</h2>
+                        <div className='mt-3 flex items-center justify-between rounded-2xl border border-line p-3'>
+                            <div className='flex items-center gap-3'>
+                                {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+                                <div>
+                                    <p className='text-sm font-semibold'>Dark mode</p>
+                                    <p className='text-xs text-muted'>Follows your choice, not the OS, once set.</p>
+                                </div>
+                            </div>
+                            <Switch checked={theme === 'dark'} onCheckedChange={toggle} />
+                        </div>
+                        <div className='mt-3 flex items-center justify-between rounded-2xl border border-line p-3'>
+                            <div>
+                                <p className='text-sm font-semibold'>Scene labels</p>
+                                <p className='text-xs text-muted'>Zero-shot labels from the image embedding model.</p>
+                            </div>
+                            <Switch
+                                checked={values.scenes_enabled === '1'}
+                                onCheckedChange={(checked) => update('scenes_enabled', checked ? '1' : '0')}
+                            />
+                        </div>
+                    </section>
+                </div>
+
+                <aside className='space-y-4'>
+                    <section className='rounded-3xl border border-line bg-surface p-4'>
+                        <h2 className='text-sm font-semibold'>Local library</h2>
+                        <div className='mt-3 space-y-2 text-xs text-muted'>
+                            <Row label='Photos' value={stats?.images.toLocaleString() ?? '0'} />
+                            <Row label='Faces' value={stats?.faces.toLocaleString() ?? '0'} />
+                            <Row label='People' value={stats?.people.toLocaleString() ?? '0'} />
+                            <Row label='To review' value={stats?.unsortedFaces.toLocaleString() ?? '0'} />
+                            <Row label='Data directory' value={info?.dataDir ?? '…'} mono />
+                            <Row label='Image model' value={info?.imageModel ?? '…'} />
+                            <Row label='Disk free' value={info ? formatBytes(info.disk.free) : '…'} />
+                        </div>
+                    </section>
+
+                    <section className='rounded-3xl border border-line bg-surface p-4'>
+                        <div className='flex items-center justify-between'>
+                            <h2 className='text-sm font-semibold'>Classifier</h2>
+                            <Badge variant={classifier?.trainedAt ? (classifier.stale ? 'warning' : 'success') : 'muted'}>
+                                {classifier?.trainedAt ? (classifier.stale ? 'stale' : 'ready') : 'not trained'}
+                            </Badge>
+                        </div>
+                        <p className='mt-2 text-xs leading-5 text-muted'>
+                            {classifier?.trainedAt
+                                ? `${classifier.classes} classes · threshold ${classifier.threshold?.toFixed(2)} · ${classifier.correctionsSinceTrain} corrections since training`
+                                : 'Confirm two people with two faces each to train the first classifier.'}
+                        </p>
+                        <Button
+                            variant='secondary'
+                            size='sm'
+                            className='mt-3 w-full'
+                            disabled={!classifier?.canTrain}
+                            onClick={train}
+                        >
+                            Train classifier
+                        </Button>
+                    </section>
+
+                    <section className='rounded-3xl border border-line bg-surface p-4'>
+                        <div className='flex items-center gap-2'>
+                            <ShieldCheck size={16} className='text-success' />
+                            <h2 className='text-sm font-semibold'>Local only</h2>
+                        </div>
+                        <p className='mt-2 text-xs leading-5 text-muted'>
+                            The API binds to 127.0.0.1, serves the frontend same-origin, and never uploads photos.
+                            Model weights are cached locally.
+                        </p>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    );
+}
+
+function Field({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+    return (
+        <div className='space-y-1.5'>
+            <Label>{label}</Label>
+            {children}
+            <p className='text-[11px] leading-4 text-muted'>{hint}</p>
+        </div>
+    );
+}
+
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+    return (
+        <div className='flex items-start justify-between gap-3'>
+            <span>{label}</span>
+            <span className={mono ? 'max-w-[180px] truncate text-right font-mono text-[10px]' : 'text-right font-semibold text-ink'}>
+                {value}
+            </span>
+        </div>
+    );
+}
