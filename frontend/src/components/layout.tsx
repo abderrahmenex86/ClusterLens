@@ -558,7 +558,7 @@ function StatusDock() {
                 onClick={() => setOpen(true)}
                 title='Open activity'
                 className={cn(
-                    'fixed bottom-3 left-3 z-40 flex w-fit max-w-[252px] items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left shadow-lift transition-colors hover:bg-surface-strong',
+                    'fixed bottom-3 left-3 z-40 flex w-[calc(100vw-1.5rem)] items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left shadow-lift transition-colors hover:bg-surface-strong md:w-[240px]',
                     first && 'border-accent/40'
                 )}
             >
