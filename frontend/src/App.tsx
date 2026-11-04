@@ -49,8 +49,8 @@ function ThemedToaster() {
             position='bottom-left'
             richColors
             closeButton
-            offset={{ bottom: 64, left: 16 }}
-            mobileOffset={{ bottom: 68, left: 12 }}
+            offset={{ bottom: 76, left: 16 }}
+            mobileOffset={{ bottom: 80, left: 12 }}
             toastOptions={{ className: 'sonner-toast' }}
         />
     );

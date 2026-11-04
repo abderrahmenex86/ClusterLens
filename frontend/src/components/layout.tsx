@@ -558,23 +558,25 @@ function StatusDock() {
                 onClick={() => setOpen(true)}
                 title='Open activity'
                 className={cn(
-                    'fixed bottom-3 left-3 z-40 flex w-[252px] max-w-[calc(100vw-1.5rem)] items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 text-left shadow-lift transition-colors hover:bg-surface-strong',
+                    'fixed bottom-3 left-3 z-40 flex w-fit max-w-[252px] items-start gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5 text-left shadow-lift transition-colors hover:bg-surface-strong',
                     first && 'border-accent/40'
                 )}
             >
                 {first ? (
-                    <ActiveDot />
+                    <span className='mt-1 flex shrink-0'>
+                        <ActiveDot />
+                    </span>
                 ) : failed ? (
-                    <span className='h-2 w-2 shrink-0 rounded-full bg-danger' />
+                    <span className='mt-1 h-2 w-2 shrink-0 rounded-full bg-danger' />
                 ) : (
-                    <span className='h-2 w-2 shrink-0 rounded-full bg-success' />
+                    <span className='mt-1 h-2 w-2 shrink-0 rounded-full bg-success' />
                 )}
                 <span className='min-w-0 flex-1'>
-                    <span className='block truncate text-[11px] font-semibold text-ink'>{title}</span>
-                    <span className='block truncate text-[10px] text-muted'>{detail}</span>
+                    <span className='block truncate text-[11px] font-semibold leading-4 text-ink'>{title}</span>
+                    <span className='mt-0.5 block truncate text-[10px] leading-4 text-muted'>{detail}</span>
                 </span>
                 {active.length > 1 && (
-                    <span className='shrink-0 rounded-full bg-surface-strong px-1.5 py-0.5 text-[10px] font-semibold text-muted'>
+                    <span className='mt-0.5 shrink-0 rounded-full bg-surface-strong px-1.5 py-0.5 text-[10px] font-semibold text-muted'>
                         +{active.length - 1}
                     </span>
                 )}
