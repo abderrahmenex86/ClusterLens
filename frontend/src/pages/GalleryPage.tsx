@@ -8,6 +8,7 @@ import { usePeople, useSources, useStats } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 import { Badge, Button, Input, Skeleton } from '@/components/ui';
 import { EmptyState, ImageTile, PageHeader } from '@/components/common';
+import { PhotoOverlay } from '@/pages/PhotoOverlay';
 
 const PAGE_SIZE = 60;
 
@@ -65,6 +66,67 @@ export function GalleryPage() {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<unknown>(null);
+
+    const photoParam = searchParams.get('photo');
+    const photoId = photoParam ? Number(photoParam) : null;
+    const faceParam = searchParams.get('face');
+    const faceId = faceParam ? Number(faceParam) : null;
+    const photoIndex = photoId ? items.findIndex((image) => image.id === photoId) : -1;
+
+    function photoLink(id: number): string {
+        const next = new URLSearchParams(searchParams);
+        next.set('photo', String(id));
+        next.delete('face');
+        return `/?${next.toString()}`;
+    }
+
+    function openPhoto(id: number) {
+        const next = new URLSearchParams(searchParams);
+        next.set('photo', String(id));
+        next.delete('face');
+        setSearchParams(next);
+    }
+
+    function closePhoto() {
+        const next = new URLSearchParams(searchParams);
+        next.delete('photo');
+        next.delete('face');
+        setSearchParams(next);
+    }
+
+    function changeFace(nextFaceId: number | null) {
+        const next = new URLSearchParams(searchParams);
+        if (nextFaceId === null) {
+            next.delete('face');
+        } else {
+            next.set('face', String(nextFaceId));
+        }
+        setSearchParams(next, { replace: true });
+    }
+
+    async function movePhoto(delta: number) {
+        if (photoIndex < 0) return;
+        const target = items[photoIndex + delta];
+        if (target) {
+            openPhoto(target.id);
+            return;
+        }
+        if (delta > 0 && items.length < total) {
+            setLoadingMore(true);
+            try {
+                const page = await fetchPage(items.length);
+                const nextItems = [...items, ...page.items];
+                setItems(nextItems);
+                setTotal(page.total);
+                const next = nextItems[photoIndex + 1];
+                if (next) openPhoto(next.id);
+            } catch (reason) {
+                toast.error(reason instanceof Error ? reason.message : 'Could not load the next photo');
+            } finally {
+                setLoadingMore(false);
+            }
+        }
+    }
 
     async function fetchPage(offset: number): Promise<{ items: ImageSummary[]; total: number }> {
         if (q) {
@@ -318,6 +380,7 @@ export function GalleryPage() {
                                 <ImageTile
                                     key={image.id}
                                     image={image}
+                                    to={photoLink(image.id)}
                                     className={TILE_SPANS[index % TILE_SPANS.length]}
                                 />
                             ))}
@@ -338,6 +401,24 @@ export function GalleryPage() {
                     </>
                 )}
             </div>
+
+            {photoId !== null && Number.isFinite(photoId) && (
+                <PhotoOverlay
+                    imageId={photoId}
+                    faceId={faceId}
+                    onClose={closePhoto}
+                    onFaceChange={changeFace}
+                    onPrev={() => void movePhoto(-1)}
+                    onNext={() => void movePhoto(1)}
+                    hasPrev={photoIndex > 0}
+                    hasNext={photoIndex >= 0 && (photoIndex < items.length - 1 || items.length < total)}
+                    position={
+                        photoIndex >= 0
+                            ? { index: photoIndex + 1, total }
+                            : undefined
+                    }
+                />
+            )}
         </div>
     );
 }

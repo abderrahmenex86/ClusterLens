@@ -242,7 +242,7 @@ export function PersonPage() {
                         </div>
                         <div className='grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8'>
                             {person.faces.map((face) => (
-                                <Link key={face.id} to={`/photo/${face.imageId}?face=${face.id}`}>
+                                <Link key={face.id} to={`/?photo=${face.imageId}&face=${face.id}`}>
                                     <FaceThumb faceId={face.id} person={face.person} className='aspect-square w-full' />
                                 </Link>
                             ))}

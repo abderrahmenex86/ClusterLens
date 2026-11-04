@@ -53,15 +53,17 @@ export function ImageTile({
     image,
     score,
     className,
+    to,
 }: {
     image: ImageSummary;
     score?: number;
     className?: string;
+    to: string;
 }) {
     const [failed, setFailed] = useState(false);
     return (
         <Link
-            to={`/photo/${image.id}`}
+            to={to}
             className={cn(
                 'group relative block overflow-hidden bg-surface-strong transition-opacity duration-200 hover:opacity-90',
                 className

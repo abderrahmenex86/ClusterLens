@@ -1,6 +1,8 @@
 import {
     ArrowLeft,
     Check,
+    ChevronLeft,
+    ChevronRight,
     ExternalLink,
     ImageOff,
     Loader2,
@@ -12,63 +14,98 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link } from 'react-router';
 import { toast } from 'sonner';
 
 import { api, type Face } from '@/lib/api';
-import { usePeople, useStats } from '@/lib/hooks';
+import { usePeople } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 import {
     Badge,
     Button,
+    Dialog,
+    DialogContent,
+    DialogTitle,
     Input,
     Label,
     ScrollArea,
     Separator,
     Skeleton,
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
 } from '@/components/ui';
 import { EmptyState, FaceThumb, PersonPicker } from '@/components/common';
 
-export function PhotoPage() {
-    const { id } = useParams();
-    const imageId = Number(id);
-    const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+type PhotoOverlayProps = {
+    imageId: number;
+    faceId: number | null;
+    onClose: () => void;
+    onFaceChange: (faceId: number | null) => void;
+    onPrev: () => void;
+    onNext: () => void;
+    hasPrev: boolean;
+    hasNext: boolean;
+    position?: { index: number; total: number };
+};
+
+export function PhotoOverlay({
+    imageId,
+    faceId,
+    onClose,
+    onFaceChange,
+    onPrev,
+    onNext,
+    hasPrev,
+    hasNext,
+    position,
+}: PhotoOverlayProps) {
     const { data: image, isLoading, error, refetch } = useQuery({
         queryKey: ['image', imageId],
         queryFn: () => api.image(imageId),
         enabled: Number.isFinite(imageId),
     });
     const { data: people, refetch: refetchPeople } = usePeople();
-    const { data: stats } = useStats();
     const [busy, setBusy] = useState(false);
     const [previewFailed, setPreviewFailed] = useState(false);
     const [similar, setSimilar] = useState<{ face: Face; score: number }[] | null>(null);
     const [newName, setNewName] = useState('');
     const [bbox, setBbox] = useState<[number, number, number, number] | null>(null);
 
-    const selectedFaceId = searchParams.get('face') ? Number(searchParams.get('face')) : null;
+    const selectedFaceId = faceId;
     const selectedFace = useMemo(
         () => image?.faces.find((face) => face.id === selectedFaceId) ?? null,
         [image, selectedFaceId]
     );
 
     useEffect(() => {
+        setPreviewFailed(false);
         setSimilar(null);
+        setNewName('');
         if (selectedFace) {
             setBbox(selectedFace.bbox);
         } else {
             setBbox(null);
         }
-    }, [selectedFace]);
+    }, [imageId, selectedFace]);
 
-    function selectFace(faceId: number) {
-        const next = new URLSearchParams(searchParams);
-        next.set('face', String(faceId));
-        setSearchParams(next, { replace: true });
+    useEffect(() => {
+        function onKeyDown(event: KeyboardEvent) {
+            const target = event.target as HTMLElement | null;
+            if (target?.closest('input, textarea, select, [contenteditable="true"]')) {
+                return;
+            }
+            if (event.key === 'ArrowLeft' && hasPrev) {
+                event.preventDefault();
+                onPrev();
+            } else if (event.key === 'ArrowRight' && hasNext) {
+                event.preventDefault();
+                onNext();
+            }
+        }
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [hasNext, hasPrev, onNext, onPrev]);
+
+    function selectFace(id: number) {
+        onFaceChange(id);
     }
 
     async function assignToPerson(personId: number) {
@@ -160,42 +197,61 @@ export function PhotoPage() {
         }
     }
 
+    const overlayClass =
+        '!left-0 !top-0 !h-dvh !w-screen !max-w-none !max-h-none !translate-x-0 !translate-y-0 !rounded-none !border-0 !bg-background/95 !p-0';
+
     if (isLoading) {
         return (
-            <div className='flex h-full items-center justify-center'>
-                <Skeleton className='h-96 w-full max-w-4xl' />
-            </div>
+            <Dialog open onOpenChange={(open) => !open && onClose()}>
+                <DialogContent hideClose className={overlayClass}>
+                    <DialogTitle className='sr-only'>Photo viewer</DialogTitle>
+                    <div className='flex h-dvh items-center justify-center'>
+                        <Skeleton className='h-96 w-full max-w-4xl' />
+                    </div>
+                </DialogContent>
+            </Dialog>
         );
     }
 
     if (error || !image) {
         return (
-            <div className='p-6'>
-                <EmptyState
-                    icon={<ImageOff size={20} />}
-                    title='Photo not available'
-                    description={error instanceof Error ? error.message : 'This photo may be missing from its source folder.'}
-                    action={
-                        <Button variant='secondary' onClick={() => navigate('/')}>
-                            Back to library
-                        </Button>
-                    }
-                />
-            </div>
+            <Dialog open onOpenChange={(open) => !open && onClose()}>
+                <DialogContent hideClose className={overlayClass}>
+                    <DialogTitle className='sr-only'>Photo viewer</DialogTitle>
+                    <div className='flex h-dvh items-center justify-center p-6'>
+                        <EmptyState
+                            icon={<ImageOff size={20} />}
+                            title='Photo not available'
+                            description={error instanceof Error ? error.message : 'This photo may be missing from its source folder.'}
+                            action={
+                                <Button variant='secondary' onClick={onClose}>
+                                    Back to library
+                                </Button>
+                            }
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         );
     }
 
     const displayedDate = image.dateTaken ? new Date(image.dateTaken).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : null;
 
     return (
-        <div className='flex min-h-full flex-col'>
-            <div className='flex items-center justify-between gap-3 px-5 py-3'>
-                <Button asChild variant='ghost' size='sm'>
-                    <Link to='/'>
-                        <ArrowLeft size={15} /> Library
-                    </Link>
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent hideClose className={overlayClass}>
+                <DialogTitle className='sr-only'>Photo viewer</DialogTitle>
+                <div className='flex h-dvh flex-col'>
+            <div className='flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line px-4'>
+                <Button variant='ghost' size='sm' onClick={onClose}>
+                    <ArrowLeft size={15} /> Library
                 </Button>
                 <div className='flex items-center gap-2 text-xs text-muted'>
+                    {position && (
+                        <span className='tabular-nums'>
+                            {position.index} / {position.total}
+                        </span>
+                    )}
                     <span>Photo {image.id}</span>
                     <a
                         href={`/api/images/${image.id}/file`}
@@ -208,14 +264,34 @@ export function PhotoPage() {
                 </div>
             </div>
 
-            <div className='grid min-h-0 flex-1 gap-5 px-5 pb-6 lg:grid-cols-[minmax(0,1fr)_360px]'>
-                <div className='flex min-h-[420px] items-start justify-center rounded-3xl border border-line bg-surface-strong/30 p-3 lg:items-center'>
+            <div className='grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_380px] lg:overflow-hidden'>
+                <div className='relative flex min-h-[50vh] items-center justify-center overflow-hidden bg-black/40 p-4 lg:min-h-0'>
+                    <Button
+                        variant='secondary'
+                        size='icon'
+                        onClick={onPrev}
+                        disabled={!hasPrev}
+                        aria-label='Previous photo'
+                        className='absolute left-3 z-10 h-11 w-11 shadow-lift'
+                    >
+                        <ChevronLeft size={22} />
+                    </Button>
+                    <Button
+                        variant='secondary'
+                        size='icon'
+                        onClick={onNext}
+                        disabled={!hasNext}
+                        aria-label='Next photo'
+                        className='absolute right-3 z-10 h-11 w-11 shadow-lift'
+                    >
+                        <ChevronRight size={22} />
+                    </Button>
                     <div className='relative inline-block max-w-full'>
                         <img
                             src={previewFailed ? `/api/images/${image.id}/file` : image.previewUrl}
                             alt={`Photo${image.people.length ? ` of ${image.people.map((person) => person.name).join(', ')}` : ''}`}
                             onError={() => setPreviewFailed(true)}
-                            className='block max-h-[72vh] w-auto max-w-full rounded-2xl object-contain'
+                            className='block max-h-[calc(100dvh-9rem)] w-auto max-w-full object-contain'
                         />
                         <div className='absolute inset-0'>
                             {image.faces.map((face, index) => {
@@ -383,7 +459,7 @@ export function PhotoPage() {
                                                 {similar.map(({ face, score }) => (
                                                     <Link
                                                         key={face.id}
-                                                        to={`/photo/${face.imageId}?face=${face.id}`}
+                                                        to={`/?photo=${face.imageId}&face=${face.id}`}
                                                         className='group'
                                                         title={`${face.person?.name ?? 'Unsorted'} · ${(score * 100).toFixed(0)}%`}
                                                     >
@@ -430,6 +506,8 @@ export function PhotoPage() {
                     </ScrollArea>
                 </aside>
             </div>
-        </div>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

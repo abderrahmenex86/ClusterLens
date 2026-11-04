@@ -243,8 +243,11 @@ export const DialogClose = DialogPrimitive.Close;
 
 export const DialogContent = React.forwardRef<
     React.ElementRef<typeof DialogPrimitive.Content>,
-    React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { wide?: boolean }
->(({ className, children, wide, ...props }, ref) => (
+    React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+        wide?: boolean;
+        hideClose?: boolean;
+    }
+>(({ className, children, wide, hideClose, ...props }, ref) => (
     <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className='fixed inset-0 z-50 bg-black/45 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out' />
         <DialogPrimitive.Content
@@ -257,10 +260,12 @@ export const DialogContent = React.forwardRef<
             {...props}
         >
             {children}
-            <DialogPrimitive.Close className='absolute right-4 top-4 rounded-full p-2 text-muted transition-colors hover:bg-surface-strong hover:text-ink'>
-                <X size={18} />
-                <span className='sr-only'>Close</span>
-            </DialogPrimitive.Close>
+            {!hideClose && (
+                <DialogPrimitive.Close className='absolute right-4 top-4 rounded-full p-2 text-muted transition-colors hover:bg-surface-strong hover:text-ink'>
+                    <X size={18} />
+                    <span className='sr-only'>Close</span>
+                </DialogPrimitive.Close>
+            )}
         </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
 ));

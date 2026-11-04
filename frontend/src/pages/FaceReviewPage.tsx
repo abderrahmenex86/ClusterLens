@@ -155,7 +155,7 @@ export function FaceReviewPage() {
                                         box {selected.bboxSource}
                                     </p>
                                     <Link
-                                        to={`/photo/${selected.imageId}?face=${selected.id}`}
+                                        to={`/?photo=${selected.imageId}&face=${selected.id}`}
                                         className='mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline'
                                     >
                                         Open in photo <ExternalLink size={12} />

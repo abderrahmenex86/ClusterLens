@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { Toaster } from 'sonner';
 
 import { AppLayout } from '@/components/layout';
@@ -10,7 +10,7 @@ import { ExportPage } from '@/pages/ExportPage';
 import { FaceReviewPage } from '@/pages/FaceReviewPage';
 import { GalleryPage } from '@/pages/GalleryPage';
 import { PeoplePage, PersonPage } from '@/pages/PeoplePages';
-import { PhotoPage } from '@/pages/PhotoPage';
+
 import { ReviewPage } from '@/pages/ReviewPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { SourcesPage } from '@/pages/SourcesPage';
@@ -28,6 +28,17 @@ const queryClient = new QueryClient({
 function LiveUpdates() {
     useJobStream();
     return null;
+}
+
+function LegacyPhotoRedirect() {
+    const { id } = useParams();
+    const location = useLocation();
+    const current = new URLSearchParams(location.search);
+    const next = new URLSearchParams();
+    if (id) next.set('photo', id);
+    const face = current.get('face');
+    if (face) next.set('face', face);
+    return <Navigate to={`/?${next.toString()}`} replace />;
 }
 
 function ThemedToaster() {
@@ -53,7 +64,7 @@ export default function App() {
                         <Routes>
                             <Route element={<AppLayout />}>
                                 <Route index element={<GalleryPage />} />
-                                <Route path='photo/:id' element={<PhotoPage />} />
+                                <Route path='photo/:id' element={<LegacyPhotoRedirect />} />
                                 <Route path='people' element={<PeoplePage />} />
                                 <Route path='people/:id' element={<PersonPage />} />
                                 <Route path='review' element={<ReviewPage />} />
