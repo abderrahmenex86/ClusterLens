@@ -115,16 +115,6 @@ export function ReviewPage() {
         }
     }
 
-    async function train() {
-        try {
-            await api.trainClassifier();
-            toast.success('Classifier training queued');
-            await queryClient.invalidateQueries({ queryKey: ['classifier'] });
-        } catch (reason) {
-            toast.error(reason instanceof Error ? reason.message : 'Could not train classifier');
-        }
-    }
-
     return (
         <div className='pb-12'>
             <PageHeader
@@ -327,18 +317,10 @@ export function ReviewPage() {
                             </>
                         ) : (
                             <p className='mt-2 text-xs leading-5 text-muted'>
-                                k-NN assigns faces immediately. Train the SVM after confirming at least two people with two faces each.
+                                k-NN assigns faces immediately. Train the SVM from the top bar after confirming at
+                                least two people with two faces each.
                             </p>
                         )}
-                        <Button
-                            variant='secondary'
-                            size='sm'
-                            className='mt-3 w-full'
-                            disabled={!classifier?.canTrain}
-                            onClick={train}
-                        >
-                            <Sparkles size={14} /> Train now
-                        </Button>
                     </div>
 
                     <div className='rounded-3xl border border-line bg-surface p-4'>

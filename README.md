@@ -1,6 +1,6 @@
 # ClusterLens
 
-A local-first smart gallery for recovered photo archives. It was built after a corrupted drive left thousands of photos with scrambled filenames and partial metadata, so it keeps the EXIF that survived and reconstructs what is missing from the pixels: people, documents, visual similarity, and a searchable library.
+A local-first smart gallery for recovered photo archives. It was built after a corrupted drive left thousands of photos with scrambled filenames and partial metadata, so it keeps the EXIF that survived and reconstructs what is missing from the pixels: the people in the photos, the documents between them, and a timeline that still makes sense.
 
 ![ClusterLens gallery with blurred sample photos](docs/screenshots/gallery.png)
 
@@ -9,7 +9,7 @@ A local-first smart gallery for recovered photo archives. It was built after a c
 - Indexes multiple folders in place. DCIM, Downloads, Pictures, Telegram, and Messenger folders are sources, not a special import format. Files are never moved, renamed, or deleted.
 - Detects faces with InsightFace, groups unsorted faces with HDBSCAN, and keeps confirmed people stable while new photos arrive.
 - Assigns new faces with k-NN over confirmed faces and an optional linear SVM trained from corrections.
-- Searches the library in natural language with SigLIP image and text embeddings, then filters by person, document, or year.
+- Groups the gallery by year from EXIF dates instead of rebuilding a Years folder. Photos without a usable date fall into one Date unknown group.
 - Uses zero-shot labels to identify documents and screenshots without a separate classifier. People and Documents are the primary browse modes.
 - Exports full-photo copies into a people-first tree, with documents and unknown as fallbacks. Every copy is recorded in `.clusterlens/manifest.jsonl`.
 - Resets the index, thumbnails, classifier models, and export history from Settings without touching the source folders or exported copies.
@@ -33,7 +33,7 @@ cd ..
 python -m backend.app
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). Add folders from the Sources page. The first analysis downloads the InsightFace and SigLIP weights once, then runs entirely on the machine.
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765). Add folders from Settings → Sources. The first analysis downloads the InsightFace and SigLIP weights once, then runs entirely on the machine.
 
 For development, run `npm run dev` in `frontend` with the API on port 8765. Vite proxies `/api` to the backend. Run the backend tests with `venv/bin/python -m unittest discover -s tests`.
 
@@ -45,7 +45,7 @@ Adding a source queues a background scan. The scanner hashes files, links exact 
 
 New faces first go through k-NN against confirmed faces. If a classifier is trained, its probability is used as a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal is what creates a person. Clusters are proposals, not truth; faces that never cluster go to a separate face-level review queue. Corrections are logged, a face moved away from a person becomes a cannot-link for that person, and enough corrections queue a classifier retrain.
 
-Search embeds the query with SigLIP and compares it to the image matrix with cosine similarity. At this library size, a matrix multiply is enough; a vector database is deliberately not part of the stack.
+SigLIP embeddings also power natural-language search in the API. The interface keeps search out of the way for now: People, Documents, and the timeline are the primary ways in. The same embeddings group visually similar photos without a vector database; at this library size, a matrix multiply is enough.
 
 Export is a copy job, never a move. A photo with three confirmed people is copied into three `People/<name>/` folders. If it has no confirmed person, it falls through to `Documents/`, then `Unknown/`. The manifest records the source path, content hash, labels, and export path for every copy.
 

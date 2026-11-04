@@ -1,6 +1,7 @@
-import { Loader2, Moon, ShieldCheck, Sparkles, Sun, Trash2 } from 'lucide-react';
+import { Activity, FolderOpen, Loader2, Moon, ShieldCheck, Sparkles, Sun, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router';
 import { toast } from 'sonner';
 
 import { api, formatBytes } from '@/lib/api';
@@ -20,6 +21,7 @@ import {
     Label,
     Switch,
 } from '@/components/ui';
+import { ActivitySheet } from '@/components/layout';
 import { PageHeader } from '@/components/common';
 
 export function SettingsPage() {
@@ -33,6 +35,7 @@ export function SettingsPage() {
     const [values, setValues] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
     const [resetOpen, setResetOpen] = useState(false);
+    const [activityOpen, setActivityOpen] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [keepSources, setKeepSources] = useState(true);
     const [rescan, setRescan] = useState(true);
@@ -68,17 +71,6 @@ export function SettingsPage() {
             await queryClient.invalidateQueries({ queryKey: ['jobs'] });
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not recluster');
-        }
-    }
-
-    async function train() {
-        try {
-            await api.trainClassifier();
-            toast.success('Classifier training queued');
-            await queryClient.invalidateQueries({ queryKey: ['classifier'] });
-            await queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Could not train classifier');
         }
     }
 
@@ -276,16 +268,43 @@ export function SettingsPage() {
                         <p className='mt-2 text-xs leading-5 text-muted'>
                             {classifier?.trainedAt
                                 ? `${classifier.classes} classes · threshold ${classifier.threshold?.toFixed(2)} · ${classifier.correctionsSinceTrain} corrections since training`
-                                : 'Confirm two people with two faces each to train the first classifier.'}
+                                : 'Confirm two people with two faces each, then train from the top bar.'}
+                        </p>
+                        <p className='mt-2 text-[11px] leading-4 text-muted'>
+                            Training runs from the Train SVM button in the header.
+                        </p>
+                    </section>
+
+                    <section className='rounded-3xl border border-line bg-surface p-4'>
+                        <div className='flex items-center justify-between'>
+                            <h2 className='text-sm font-semibold'>Sources</h2>
+                            <Badge variant='muted'>{stats?.sources ?? 0}</Badge>
+                        </div>
+                        <p className='mt-2 text-xs leading-5 text-muted'>
+                            Folders indexed in place. Add, rescan, or remove them without moving a file.
+                        </p>
+                        <Button asChild variant='secondary' size='sm' className='mt-3 w-full'>
+                            <Link to='/sources'>
+                                <FolderOpen size={14} /> Manage sources
+                            </Link>
+                        </Button>
+                    </section>
+
+                    <section className='rounded-3xl border border-line bg-surface p-4'>
+                        <div className='flex items-center gap-2'>
+                            <Activity size={16} className='text-muted' />
+                            <h2 className='text-sm font-semibold'>Activity</h2>
+                        </div>
+                        <p className='mt-2 text-xs leading-5 text-muted'>
+                            Indexing, face analysis, training, and export jobs. Pause, retry, or inspect failures.
                         </p>
                         <Button
                             variant='secondary'
                             size='sm'
                             className='mt-3 w-full'
-                            disabled={!classifier?.canTrain}
-                            onClick={train}
+                            onClick={() => setActivityOpen(true)}
                         >
-                            Train classifier
+                            Open activity
                         </Button>
                     </section>
 
@@ -301,6 +320,8 @@ export function SettingsPage() {
                     </section>
                 </aside>
             </div>
+
+            <ActivitySheet open={activityOpen} onOpenChange={setActivityOpen} />
 
             <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
                 <AlertDialogContent>

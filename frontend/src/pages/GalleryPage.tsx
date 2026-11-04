@@ -1,11 +1,11 @@
-import { Filter, ImageOff, Loader2, Plus, Search, Sparkles, X } from 'lucide-react';
+import { Filter, ImageOff, Loader2, Plus, Sparkles, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { api, ApiError, type ImageSummary } from '@/lib/api';
+import { api, type ImageSummary } from '@/lib/api';
 import { usePeople, useSources, useStats } from '@/lib/hooks';
-import { Badge, Button, Input, Skeleton } from '@/components/ui';
+import { Badge, Button, Skeleton } from '@/components/ui';
 import { EmptyState, ImageTile, PageHeader } from '@/components/common';
 import { PhotoOverlay } from '@/pages/PhotoOverlay';
 
@@ -15,13 +15,10 @@ const PAGE_SIZE = 60;
 
 export function GalleryPage() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
     const { data: stats } = useStats();
-    const [mobileQuery, setMobileQuery] = useState('');
     const { data: people } = usePeople();
     const { data: sources } = useSources();
 
-    const q = searchParams.get('q') ?? '';
     const personId = searchParams.get('person');
     const scene = searchParams.get('scene');
     const year = searchParams.get('year');
@@ -34,7 +31,6 @@ export function GalleryPage() {
 
     const filters = useMemo(
         () => ({
-            q,
             personId: personId ? Number(personId) : null,
             scene,
             year,
@@ -42,12 +38,8 @@ export function GalleryPage() {
             unsorted: unsorted || null,
             document: document || null,
         }),
-        [q, personId, scene, year, sourceId, unsorted, document]
+        [personId, scene, year, sourceId, unsorted, document]
     );
-
-    useEffect(() => {
-        setMobileQuery(q);
-    }, [q]);
 
     const [items, setItems] = useState<ImageSummary[]>([]);
     const [total, setTotal] = useState(0);
@@ -117,19 +109,6 @@ export function GalleryPage() {
     }
 
     async function fetchPage(offset: number): Promise<{ items: ImageSummary[]; total: number }> {
-        if (q) {
-            const result = await api.search({
-                q,
-                personId: filters.personId,
-                scene,
-                sourceId: filters.sourceId,
-                year,
-                document: document || null,
-                limit: PAGE_SIZE,
-                offset,
-            });
-            return { items: result.items.map((item) => item.image), total: result.total };
-        }
         const result = await api.images({
             personId: filters.personId,
             scene,
@@ -168,7 +147,7 @@ export function GalleryPage() {
             cancelled = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q, filters, scene, year]);
+    }, [filters]);
 
     async function loadMore() {
         if (loadingMore || items.length >= total) return;
@@ -206,12 +185,11 @@ export function GalleryPage() {
 
     function clearFilters() {
         const next = new URLSearchParams(searchParams);
-        ['q', 'person', 'scene', 'year', 'source', 'unsorted', 'document'].forEach((key) => next.delete(key));
+        ['person', 'scene', 'year', 'source', 'unsorted', 'document'].forEach((key) => next.delete(key));
         setSearchParams(next);
     }
 
     const groups = useMemo(() => {
-        if (q) return [{ key: null as string | null, items }];
         const map = new Map<string, ImageSummary[]>();
         for (const image of items) {
             const key = image.dateTaken ? image.dateTaken.slice(0, 4) : 'Date unknown';
@@ -226,37 +204,33 @@ export function GalleryPage() {
                 return b.localeCompare(a);
             })
             .map(([key, groupItems]) => ({ key, items: groupItems }));
-    }, [items, q]);
+    }, [items]);
 
-    const hasFilters = Boolean(q || personId || scene || year || sourceId || unsorted || document);
-    const title = q
-        ? `Search “${q}”`
-        : person
-          ? person.name
-          : scene
-            ? scene[0].toUpperCase() + scene.slice(1)
-            : year
-              ? year
-              : source
-                ? source.label
-                : unsorted
-                  ? 'Needs review'
-                  : document
-                    ? 'Documents'
-                    : 'Library';
+    const hasFilters = Boolean(personId || scene || year || sourceId || unsorted || document);
+    const title = person
+        ? person.name
+        : scene
+          ? scene[0].toUpperCase() + scene.slice(1)
+          : year
+            ? year
+            : source
+              ? source.label
+              : unsorted
+                ? 'Needs review'
+                : document
+                  ? 'Documents'
+                  : 'Library';
 
     return (
         <div className='pb-12'>
             <PageHeader
                 title={title}
                 subtitle={
-                    q
-                        ? `${total.toLocaleString()} semantic matches in your local library.`
-                        : hasFilters
-                          ? `${total.toLocaleString()} photos match these filters.`
-                          : stats?.pendingImages
-                            ? `${total.toLocaleString()} of ${stats.images.toLocaleString()} photos ready · ${stats.pendingImages.toLocaleString()} pending analysis. Nothing leaves this machine.`
-                            : `${total.toLocaleString()} photos indexed locally. Nothing leaves this machine.`
+                    hasFilters
+                        ? `${total.toLocaleString()} photos match these filters.`
+                        : stats?.pendingImages
+                          ? `${total.toLocaleString()} of ${stats.images.toLocaleString()} photos ready · ${stats.pendingImages.toLocaleString()} pending analysis. Nothing leaves this machine.`
+                          : `${total.toLocaleString()} photos indexed locally. Nothing leaves this machine.`
                 }
                 actions={
                     <>
@@ -266,40 +240,16 @@ export function GalleryPage() {
                             </Link>
                         </Button>
                         <Button asChild size='sm' variant='secondary'>
-                            <Link to={q ? `/?q=${encodeURIComponent(q)}` : '/?unsorted=true'}>
-                                <Filter size={14} /> {q ? 'Filters' : 'Unsorted photos'}
+                            <Link to='/?unsorted=true'>
+                                <Filter size={14} /> Unsorted photos
                             </Link>
                         </Button>
                     </>
                 }
             />
 
-            <form
-                className='px-6 pb-4 md:hidden'
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    const value = mobileQuery.trim();
-                    navigate(value ? `/?q=${encodeURIComponent(value)}` : '/');
-                }}
-            >
-                <div className='relative'>
-                    <Search
-                        size={15}
-                        className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted'
-                    />
-                    <Input
-                        value={mobileQuery}
-                        onChange={(event) => setMobileQuery(event.target.value)}
-                        placeholder='Search your library…'
-                        aria-label='Search your library'
-                        className='pl-9'
-                    />
-                </div>
-            </form>
-
             {hasFilters && (
                 <div className='flex flex-wrap items-center gap-2 px-6 pb-5'>
-                    {q && <FilterChip label={`“${q}”`} onRemove={() => removeFilter('q')} />}
                     {person && <FilterChip label={person.name} onRemove={() => removeFilter('person')} />}
                     {scene && <FilterChip label={scene} onRemove={() => removeFilter('scene')} />}
                     {year && <FilterChip label={year} onRemove={() => removeFilter('year')} />}
@@ -317,18 +267,7 @@ export function GalleryPage() {
             )}
 
             <div className='px-6'>
-                {error instanceof ApiError && error.status === 409 ? (
-                    <EmptyState
-                        icon={<Search size={20} />}
-                        title='Semantic search is warming up'
-                        description='Image embeddings are still being generated on this machine. Browse the library in the meantime, or come back when indexing finishes.'
-                        action={
-                            <Button asChild variant='secondary'>
-                                <Link to='/'>Browse library</Link>
-                            </Button>
-                        }
-                    />
-                ) : error ? (
+                {error ? (
                     <EmptyState
                         icon={<ImageOff size={20} />}
                         title='Could not load the library'
@@ -360,14 +299,12 @@ export function GalleryPage() {
                     />
                 ) : !items.length ? (
                     <EmptyState
-                        icon={q ? <Search size={20} /> : <ImageOff size={20} />}
-                        title={q ? 'No semantic matches yet' : 'No photos here'}
+                        icon={<ImageOff size={20} />}
+                        title='No photos here'
                         description={
-                            q
-                                ? 'Try a broader phrase, or clear the filters. Search combines natural language with people and scene filters.'
-                                : hasFilters
-                                  ? 'Nothing matches these filters. Clear one to widen the view.'
-                                  : 'The initial analysis is still running. Photos will appear as they are indexed.'
+                            hasFilters
+                                ? 'Nothing matches these filters. Clear one to widen the view.'
+                                : 'The initial analysis is still running. Photos will appear as they are indexed.'
                         }
                         action={
                             hasFilters ? (

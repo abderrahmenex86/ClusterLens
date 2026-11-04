@@ -1,11 +1,10 @@
 import {
     Activity,
+    ArrowLeft,
     CheckCircle2,
-    ChevronDown,
-    ChevronRight,
     CircleAlert,
+    FileText,
     FolderOpen,
-    FolderPlus,
     Images,
     Loader2,
     Pause,
@@ -14,15 +13,13 @@ import {
     RotateCcw,
     Search,
     Sparkles,
-    FileText,
-    Trash2,
     Users,
     X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useDeferredValue, useState, type ReactNode } from 'react';
 import { FaBrain, FaCog, FaFileExport, FaMoon, FaSun } from 'react-icons/fa';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { api, type Job } from '@/lib/api';
@@ -37,11 +34,7 @@ import {
 import { useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import {
-    Badge,
     Button,
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -52,7 +45,6 @@ import {
     Label,
     Progress,
     ScrollArea,
-    Separator,
     Switch,
     Textarea,
     Tooltip,
@@ -80,229 +72,170 @@ function ActiveDot() {
     return <span className='inline-block h-2 w-2 animate-pulse rounded-full bg-accent' />;
 }
 
-function Section({
-    title,
-    icon,
-    count,
+function SidebarItem({
+    to,
+    active,
     children,
-    defaultOpen = false,
-    onViewAll,
 }: {
-    title: string;
-    icon: ReactNode;
-    count?: number;
+    to: string;
+    active?: boolean;
     children: ReactNode;
-    defaultOpen?: boolean;
-    onViewAll?: () => void;
 }) {
     return (
-        <Collapsible defaultOpen={defaultOpen} className='group/section'>
-            <CollapsibleTrigger className='flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[13px] font-semibold text-muted transition-colors hover:bg-surface-strong/60 hover:text-ink'>
-                <ChevronRight size={14} className='transition-transform group-data-[state=open]/section:rotate-90' />
-                <span className='text-ink/70'>{icon}</span>
-                <span className='flex-1'>{title}</span>
-                {typeof count === 'number' && <span className='text-[11px] tabular-nums text-muted'>{count}</span>}
-            </CollapsibleTrigger>
-            <CollapsibleContent className='pb-2 pl-4'>
-                {children}
-                {onViewAll && (
-                    <button
-                        type='button'
-                        onClick={onViewAll}
-                        className='mt-1 flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-left text-xs font-semibold text-accent hover:bg-accent-soft'
-                    >
-                        View all <ChevronRight size={12} />
-                    </button>
-                )}
-            </CollapsibleContent>
-        </Collapsible>
+        <Link
+            to={to}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+                'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-muted transition-colors hover:bg-surface-strong/60 hover:text-ink',
+                active && 'bg-accent font-semibold text-accent-ink shadow-soft hover:bg-accent hover:text-accent-ink'
+            )}
+        >
+            {children}
+        </Link>
     );
 }
 
-function SidebarLink({
-    to,
-    children,
-    active,
-}: {
-    to: string;
-    children: ReactNode;
-    active?: boolean;
-}) {
-    return (
-        <NavLink
-            to={to}
-            className={({ isActive }) =>
-                cn(
-                    'flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-medium text-muted transition-colors hover:bg-surface-strong/60 hover:text-ink',
-                    (isActive || active) && 'bg-accent-soft text-accent'
-                )
-            }
-        >
-            {children}
-        </NavLink>
-    );
+function SidebarCount({ children }: { children: ReactNode }) {
+    return <span className='ml-auto text-[11px] font-medium tabular-nums opacity-70'>{children}</span>;
 }
 
 function Sidebar() {
     const { data: stats } = useStats();
-    const { data: people } = usePeople();
     const { data: review } = useReview();
-    const { data: classifier } = useClassifier();
-    const navigate = useNavigate();
+    const [peopleOpen, setPeopleOpen] = useState(false);
+    const [peopleQuery, setPeopleQuery] = useState('');
+    const deferredQuery = useDeferredValue(peopleQuery);
+    const { data: people, isLoading: peopleLoading } = usePeople(deferredQuery);
     const location = useLocation();
     const [searchParams] = useSearchParams();
-    const [query, setQuery] = useState(searchParams.get('q') ?? '');
-
-    useEffect(() => {
-        setQuery(searchParams.get('q') ?? '');
-    }, [searchParams]);
 
     const currentPerson = searchParams.get('person');
-
-    function submitSearch(event: React.FormEvent) {
-        event.preventDefault();
-        const value = query.trim();
-        if (!value) {
-            navigate('/');
-            return;
-        }
-        navigate(`/?q=${encodeURIComponent(value)}`);
-    }
+    const document = searchParams.get('document') === 'true';
+    const unsorted = searchParams.get('unsorted') === 'true';
+    const filtered = Boolean(
+        searchParams.get('person') ||
+            searchParams.get('document') ||
+            searchParams.get('unsorted') ||
+            searchParams.get('scene') ||
+            searchParams.get('year') ||
+            searchParams.get('source')
+    );
+    const allActive = location.pathname === '/' && !filtered;
+    const peopleActive =
+        peopleOpen || location.pathname.startsWith('/people') || Boolean(currentPerson);
+    const reviewActive = location.pathname.startsWith('/review') || unsorted;
 
     return (
-        <>
-            <aside className='hidden w-[264px] shrink-0 flex-col border-r border-line bg-surface/45 md:flex'>
-                <div className='p-3'>
-                    <form onSubmit={submitSearch} className='relative'>
-                        <Search
-                            size={15}
-                            className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted'
-                        />
-                        <Input
-                            value={query}
-                            onChange={(event) => setQuery(event.target.value)}
-                            placeholder='Search your library…'
-                            aria-label='Search your library'
-                            className='h-10 pl-9 pr-8'
-                        />
-                        {query && (
-                            <button
-                                type='button'
-                                onClick={() => {
-                                    setQuery('');
-                                    navigate('/');
-                                }}
-                                className='absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted hover:bg-surface-strong'
-                                aria-label='Clear search'
-                            >
-                                <X size={13} />
-                            </button>
-                        )}
-                    </form>
-                </div>
-
-                <ScrollArea className='min-h-0 flex-1 px-2'>
-                    <div className='flex flex-col gap-0.5 pb-4'>
-                        <SidebarLink to='/' active={location.pathname === '/' && !searchParams.toString()}>
-                            <Images size={15} /> All photos
-                            <span className='ml-auto text-[11px] tabular-nums text-muted'>{stats?.visibleImages ?? stats?.images ?? 0}</span>
-                        </SidebarLink>
-                        <SidebarLink
-                            to='/?document=true'
-                            active={searchParams.get('document') === 'true'}
+        <aside className='hidden w-[264px] shrink-0 flex-col border-r border-line bg-surface/45 md:flex'>
+            {peopleOpen ? (
+                <>
+                    <div className='flex items-center gap-2 p-3 pb-2'>
+                        <Button
+                            variant='ghost'
+                            size='icon-sm'
+                            onClick={() => {
+                                setPeopleQuery('');
+                                setPeopleOpen(false);
+                            }}
+                            aria-label='Back to library'
                         >
-                            <FileText size={15} /> Documents
-                            <span className='ml-auto text-[11px] tabular-nums text-muted'>
-                                {stats?.documents ?? 0}
-                            </span>
-                        </SidebarLink>
-                        <SidebarLink to='/review' active={location.pathname.startsWith('/review')}>
-                            <CircleAlert size={15} /> Needs review
-                            <span className='ml-auto text-[11px] tabular-nums text-muted'>
-                                {(review?.proposedPeople ?? 0) + (stats?.unsortedFaces ?? 0)}
-                            </span>
-                        </SidebarLink>
-
-                        <div className='mt-4'>
-                            <Section
-                                title='People'
-                                icon={<Users size={15} />}
-                                count={stats?.people ?? 0}
-                                onViewAll={() => navigate('/people')}
-                            >
-                                <div className='flex flex-col gap-0.5'>
-                                    {people?.items.slice(0, 8).map((person) => (
-                                        <SidebarLink
-                                            key={person.id}
-                                            to={`/?person=${person.id}`}
-                                            active={currentPerson === String(person.id)}
-                                        >
-                                            <span className='flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-surface-strong text-[10px] font-bold text-muted'>
-                                                {person.coverUrl ? (
-                                                    <img src={person.coverUrl} alt='' className='h-full w-full object-cover' />
-                                                ) : (
-                                                    person.name.slice(0, 1).toUpperCase()
-                                                )}
-                                            </span>
-                                            <span className='truncate'>{person.name}</span>
-                                            <span className='ml-auto text-[11px] tabular-nums text-muted'>
-                                                {person.faceCount}
-                                            </span>
-                                        </SidebarLink>
-                                    ))}
-                                    {!people?.items.length && (
-                                        <p className='px-2 py-2 text-xs text-muted'>No people yet. Review proposals.</p>
-                                    )}
-                                </div>
-                            </Section>
+                            <ArrowLeft size={16} />
+                        </Button>
+                        <div className='relative min-w-0 flex-1'>
+                            <Search
+                                size={14}
+                                className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted'
+                            />
+                            <Input
+                                autoFocus
+                                value={peopleQuery}
+                                onChange={(event) => setPeopleQuery(event.target.value)}
+                                placeholder='Search people…'
+                                aria-label='Search people'
+                                className='h-9 pl-8'
+                            />
                         </div>
+                    </div>
 
-                        <Separator className='my-3' />
-                        <SidebarLink to='/people'>
-                            <Users size={15} /> People directory
-                        </SidebarLink>
-                        <SidebarLink to='/sources'>
-                            <FolderPlus size={15} /> Manage sources
-                        </SidebarLink>
+                    <div className='flex items-baseline justify-between px-4 pb-2 pt-1'>
+                        <p className='text-[11px] font-semibold uppercase tracking-[0.14em] text-muted'>
+                            People
+                        </p>
+                        <span className='text-[11px] tabular-nums text-muted'>
+                            {people?.items.length ?? 0}
+                        </span>
+                    </div>
+
+                    <ScrollArea className='min-h-0 flex-1 px-2'>
+                        <div className='flex flex-col gap-0.5 pb-4'>
+                            {(people?.items ?? []).map((person) => (
+                                <SidebarItem
+                                    key={person.id}
+                                    to={`/?person=${person.id}`}
+                                    active={currentPerson === String(person.id)}
+                                >
+                                    <span className='flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-strong text-[10px] font-bold text-muted'>
+                                        {person.coverUrl ? (
+                                            <img
+                                                src={person.coverUrl}
+                                                alt=''
+                                                className='h-full w-full object-cover'
+                                            />
+                                        ) : (
+                                            person.name.slice(0, 1).toUpperCase()
+                                        )}
+                                    </span>
+                                    <span className='truncate'>{person.name}</span>
+                                    <SidebarCount>{person.faceCount}</SidebarCount>
+                                </SidebarItem>
+                            ))}
+                            {!peopleLoading && !people?.items.length && (
+                                <p className='px-2.5 py-3 text-xs leading-5 text-muted'>
+                                    {peopleQuery
+                                        ? 'No person matches that search.'
+                                        : 'No people yet. Name a proposal in Review.'}
+                                </p>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </>
+            ) : (
+                <ScrollArea className='min-h-0 flex-1 px-2 py-3'>
+                    <div className='flex flex-col gap-1'>
+                        <SidebarItem to='/' active={allActive}>
+                            <Images size={16} /> All photos
+                            <SidebarCount>{stats?.visibleImages ?? stats?.images ?? 0}</SidebarCount>
+                        </SidebarItem>
+
+                        <button
+                            type='button'
+                            onClick={() => setPeopleOpen(true)}
+                            aria-current={peopleActive ? 'page' : undefined}
+                            className={cn(
+                                'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-muted transition-colors hover:bg-surface-strong/60 hover:text-ink',
+                                peopleActive &&
+                                    'bg-accent font-semibold text-accent-ink shadow-soft hover:bg-accent hover:text-accent-ink'
+                            )}
+                        >
+                            <Users size={16} /> People
+                            <SidebarCount>{stats?.people ?? 0}</SidebarCount>
+                        </button>
+
+                        <SidebarItem to='/?document=true' active={location.pathname === '/' && document}>
+                            <FileText size={16} /> Documents
+                            <SidebarCount>{stats?.documents ?? 0}</SidebarCount>
+                        </SidebarItem>
+
+                        <SidebarItem to='/review' active={reviewActive}>
+                            <CircleAlert size={16} /> Needs review
+                            <SidebarCount>
+                                {(review?.proposedPeople ?? 0) + (stats?.unsortedFaces ?? 0)}
+                            </SidebarCount>
+                        </SidebarItem>
                     </div>
                 </ScrollArea>
-
-                <div className='border-t border-line p-3'>
-                    <div className='rounded-xl bg-surface-strong/60 p-3'>
-                        <div className='flex items-center justify-between gap-2'>
-                            <span className='text-[11px] font-semibold uppercase tracking-[0.12em] text-muted'>
-                                Classifier
-                            </span>
-                            <Badge variant={classifier?.trainedAt ? (classifier.stale ? 'warning' : 'success') : 'muted'}>
-                                {classifier?.trainedAt ? (classifier.stale ? 'Stale' : 'Ready') : 'Not trained'}
-                            </Badge>
-                        </div>
-                        <p className='mt-1 text-xs leading-5 text-muted'>
-                            {classifier?.trainedAt
-                                ? `Trained on ${classifier.classes} people${classifier.macroF1 ? ` · F1 ${(classifier.macroF1 * 100).toFixed(0)}%` : ''}`
-                                : 'Confirm a few people, then train the classifier.'}
-                        </p>
-                        <Button
-                            variant='secondary'
-                            size='sm'
-                            className='mt-2 w-full'
-                            disabled={!classifier?.canTrain}
-                            onClick={async () => {
-                                try {
-                                    await api.trainClassifier();
-                                    toast.success('Classifier training queued');
-                                } catch (error) {
-                                    toast.error(error instanceof Error ? error.message : 'Could not train');
-                                }
-                            }}
-                        >
-                            Train classifier
-                        </Button>
-                    </div>
-                </div>
-            </aside>
-
-        </>
+            )}
+        </aside>
     );
 }
 
@@ -478,7 +411,13 @@ function JobRow({ job }: { job: Job }) {
     );
 }
 
-function ActivitySheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function ActivitySheet({
+    open,
+    onOpenChange,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
     const { data } = useJobs();
     const jobs = data?.items ?? [];
     const active = jobs.filter((job) => ACTIVE.has(job.status));
@@ -525,49 +464,13 @@ function ActivitySheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     );
 }
 
-function StatusBar() {
-    const { data: jobs } = useJobs();
-    const { data: stats } = useStats();
-    const [open, setOpen] = useState(false);
-    const active = (jobs?.items ?? []).filter((job) => ACTIVE.has(job.status));
-    const first = active[0];
-
-    return (
-        <>
-            <footer className='flex h-10 shrink-0 items-center justify-between gap-3 border-t border-line bg-surface/80 px-4 text-xs text-muted'>
-                <div className='flex min-w-0 items-center gap-3'>
-                    <button
-                        type='button'
-                        onClick={() => setOpen(true)}
-                        className='flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-surface-strong/60'
-                    >
-                        {active.length ? <ActiveDot /> : <span className='h-2 w-2 rounded-full bg-success' />}
-                        <span className='truncate'>
-                            {first
-                                ? `${jobLabel(first)}${first.progress.total ? ` · ${first.progress.current}/${first.progress.total}` : ''}`
-                                : 'Idle · library indexed locally'}
-                        </span>
-                        {active.length > 1 && <Badge variant='muted'>+{active.length - 1}</Badge>}
-                    </button>
-                </div>
-                <div className='hidden items-center gap-4 sm:flex'>
-                    <span>{stats?.visibleImages ?? stats?.images ?? 0} photos</span>
-                    <span>{stats?.people ?? 0} people</span>
-                    <span>{stats?.faces ?? 0} faces</span>
-                    <span>{stats?.unsortedFaces ?? 0} to review</span>
-                </div>
-            </footer>
-            <ActivitySheet open={open} onOpenChange={setOpen} />
-        </>
-    );
-}
-
 function Header() {
     const { theme, toggle } = useTheme();
     const { data: jobs } = useJobs();
     const { data: classifier } = useClassifier();
     const queryClient = useQueryClient();
     const [training, setTraining] = useState(false);
+    const [activityOpen, setActivityOpen] = useState(false);
     const active = (jobs?.items ?? []).some((job) => ACTIVE.has(job.status));
 
     async function trainSvm() {
@@ -587,84 +490,119 @@ function Header() {
     }
 
     return (
-        <header className='flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface/70 px-4 backdrop-blur'>
-            <Link to='/' className='flex items-center gap-2 rounded-lg px-1 py-1'>
-                <span className='text-[17px] font-bold tracking-tight'>ClusterLens</span>
-                <Badge variant='outline' className='hidden sm:inline-flex'>
-                    local
-                </Badge>
-            </Link>
-            <div className='flex items-center gap-1.5'>
-                {active && (
-                    <span className='mr-1 hidden items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent sm:flex'>
-                        <ActiveDot /> indexing
-                    </span>
-                )}
-                <Button
-                    variant='secondary'
-                    size='sm'
-                    onClick={trainSvm}
-                    disabled={!classifier?.canTrain || training}
-                    title={
-                        classifier?.canTrain
-                            ? 'Train the SVM from confirmed faces'
-                            : 'Confirm at least two people with two faces each first'
-                    }
-                >
-                    {training ? <Loader2 size={14} className='animate-spin' /> : <FaBrain size={14} />}
-                    <span className='hidden sm:inline'>Train SVM</span>
-                </Button>
-                <Button asChild variant='secondary' size='sm'>
-                    <Link to='/export'>
-                        <FaFileExport size={14} />
-                        <span className='hidden sm:inline'>Export</span>
-                    </Link>
-                </Button>
-                <span className='mx-1 hidden h-6 w-px bg-line sm:block' />
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant='ghost' size='icon' onClick={toggle} aria-label='Toggle theme'>
-                            {theme === 'dark' ? <FaSun size={16} /> : <FaMoon size={16} />}
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Toggle theme</TooltipContent>
-                </Tooltip>
-                <Button asChild variant='ghost' size='sm'>
-                    <Link to='/settings'>
-                        <FaCog size={15} />
-                        <span className='hidden sm:inline'>Settings</span>
-                    </Link>
-                </Button>
-            </div>
-        </header>
+        <>
+            <header className='flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface/70 px-4 backdrop-blur'>
+                <Link to='/' className='flex items-center gap-2 rounded-lg px-1 py-1'>
+                    <span className='text-[17px] font-bold tracking-tight'>ClusterLens</span>
+                </Link>
+                <div className='flex items-center gap-1.5'>
+                    {active && (
+                        <button
+                            type='button'
+                            onClick={() => setActivityOpen(true)}
+                            className='mr-1 hidden items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent hover:bg-accent/20 sm:flex'
+                        >
+                            <ActiveDot /> working
+                        </button>
+                    )}
+                    <Button
+                        variant='secondary'
+                        size='sm'
+                        onClick={trainSvm}
+                        disabled={!classifier?.canTrain || training}
+                        title={
+                            classifier?.canTrain
+                                ? 'Train the SVM from confirmed faces'
+                                : 'Confirm at least two people with two faces each first'
+                        }
+                    >
+                        {training ? <Loader2 size={14} className='animate-spin' /> : <FaBrain size={14} />}
+                        <span className='hidden sm:inline'>Train SVM</span>
+                    </Button>
+                    <Button asChild variant='secondary' size='sm'>
+                        <Link to='/export'>
+                            <FaFileExport size={14} />
+                            <span className='hidden sm:inline'>Export</span>
+                        </Link>
+                    </Button>
+                    <span className='mx-1 hidden h-6 w-px bg-line sm:block' />
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant='ghost' size='icon' onClick={toggle} aria-label='Toggle theme'>
+                                {theme === 'dark' ? <FaSun size={16} /> : <FaMoon size={16} />}
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Toggle theme</TooltipContent>
+                    </Tooltip>
+                    <Button asChild variant='ghost' size='sm'>
+                        <Link to='/settings'>
+                            <FaCog size={15} />
+                            <span className='hidden sm:inline'>Settings</span>
+                        </Link>
+                    </Button>
+                </div>
+            </header>
+            <ActivitySheet open={activityOpen} onOpenChange={setActivityOpen} />
+        </>
     );
 }
 
 function MobileNav() {
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const person = searchParams.get('person');
+    const document = searchParams.get('document') === 'true';
+    const unsorted = searchParams.get('unsorted') === 'true';
+    const filtered = Boolean(
+        person ||
+            document ||
+            unsorted ||
+            searchParams.get('scene') ||
+            searchParams.get('year') ||
+            searchParams.get('source')
+    );
     const items = [
-        { to: '/', label: 'Library', icon: <Images size={15} /> },
-        { to: '/?document=true', label: 'Documents', icon: <FileText size={15} /> },
-        { to: '/people', label: 'People', icon: <Users size={15} /> },
-        { to: '/review', label: 'Review', icon: <Sparkles size={15} /> },
-        { to: '/sources', label: 'Sources', icon: <FolderOpen size={15} /> },
+        {
+            to: '/',
+            label: 'All photos',
+            icon: <Images size={14} />,
+            active: location.pathname === '/' && !filtered,
+        },
+        {
+            to: '/people',
+            label: 'People',
+            icon: <Users size={14} />,
+            active: location.pathname.startsWith('/people') || Boolean(person),
+        },
+        {
+            to: '/?document=true',
+            label: 'Documents',
+            icon: <FileText size={14} />,
+            active: location.pathname === '/' && document,
+        },
+        {
+            to: '/review',
+            label: 'Needs review',
+            icon: <Sparkles size={14} />,
+            active: location.pathname.startsWith('/review') || unsorted,
+        },
     ];
+
     return (
-        <nav className='flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line bg-surface px-2 py-1.5 md:hidden'>
+        <nav className='flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-line bg-surface px-1.5 py-1.5 md:hidden'>
             {items.map((item) => (
-                <NavLink
+                <Link
                     key={item.to}
                     to={item.to}
-                    end={item.to === '/'}
-                    className={({ isActive }) =>
-                        cn(
-                            'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted',
-                            isActive && 'bg-accent-soft text-accent'
-                        )
-                    }
+                    aria-current={item.active ? 'page' : undefined}
+                    className={cn(
+                        'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-muted',
+                        item.active && 'bg-accent text-accent-ink'
+                    )}
                 >
                     {item.icon}
                     {item.label}
-                </NavLink>
+                </Link>
             ))}
         </nav>
     );
@@ -681,7 +619,6 @@ export function AppLayout() {
                     <Outlet />
                 </main>
             </div>
-            <StatusBar />
         </div>
     );
 }
