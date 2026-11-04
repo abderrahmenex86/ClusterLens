@@ -105,6 +105,7 @@ export type ClusterProposal = {
     runId: number;
     size: number;
     sampleFaceIds: number[];
+    sampleFaces: { id: number; imageId: number }[];
     createdAt: string;
 };
 

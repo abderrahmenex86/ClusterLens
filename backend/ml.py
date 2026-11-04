@@ -137,7 +137,9 @@ def load_image_asset(path: Path) -> ImageAsset:
     with Image.open(path) as raw:
         exif = raw.getexif()
         orientation = int(exif.get(274, 1) or 1)
-        date_taken = _parse_exif_date(exif.get(36867) or exif.get(306))
+        date_taken = _parse_exif_date(
+            exif.get(36867) or exif.get(36868) or exif.get(306)
+        )
         image = ImageOps.exif_transpose(raw)
         image = image.convert("RGB")
 

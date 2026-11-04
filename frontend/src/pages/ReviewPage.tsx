@@ -15,6 +15,7 @@ import {
     Skeleton,
 } from '@/components/ui';
 import { EmptyState, PageHeader, PersonPicker } from '@/components/common';
+import { FaceContextDialog } from '@/components/FaceContextDialog';
 
 export function ReviewPage() {
     const queryClient = useQueryClient();
@@ -27,6 +28,7 @@ export function ReviewPage() {
     const [index, setIndex] = useState(0);
     const [name, setName] = useState('');
     const [busy, setBusy] = useState(false);
+    const [inspect, setInspect] = useState<{ faceId: number; imageId: number } | null>(null);
 
     const proposals = clusters?.items ?? [];
     const pendingAnalysis = stats?.pendingImages ?? 0;
@@ -248,12 +250,19 @@ export function ReviewPage() {
                             </div>
 
                             <div className='mt-5 grid max-w-[360px] grid-cols-3 gap-1'>
-                                {current.sampleFaceIds.map((faceId) => (
-                                    <div key={faceId} className='aspect-square overflow-hidden bg-surface-strong'>
-                                        <img src={`/api/faces/${faceId}/thumb`} alt='' className='h-full w-full object-cover' />
-                                    </div>
+                                {(current.sampleFaces ?? []).map((sample) => (
+                                    <button
+                                        key={sample.id}
+                                        type='button'
+                                        onClick={() => setInspect({ faceId: sample.id, imageId: sample.imageId })}
+                                        className='aspect-square overflow-hidden bg-surface-strong transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent'
+                                        aria-label='Inspect this face in its photo'
+                                    >
+                                        <img src={`/api/faces/${sample.id}/thumb`} alt='' className='h-full w-full object-cover' />
+                                    </button>
                                 ))}
                             </div>
+                            <p className='mt-2 text-[11px] text-muted'>Click a face to inspect the full photo.</p>
 
                             <div className='mt-6 space-y-3'>
                                 <div className='space-y-2'>
@@ -351,6 +360,13 @@ export function ReviewPage() {
                     </div>
                 </aside>
             </div>
+
+            <FaceContextDialog
+                open={!!inspect}
+                onOpenChange={(open) => !open && setInspect(null)}
+                imageId={inspect?.imageId ?? null}
+                faceId={inspect?.faceId ?? null}
+            />
         </div>
     );
 }

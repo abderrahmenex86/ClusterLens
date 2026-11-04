@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink, Loader2, ScanFace, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Loader2, ScanFace, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,8 +6,9 @@ import { toast } from 'sonner';
 
 import { api, type Face } from '@/lib/api';
 import { usePeople, useReviewFaces } from '@/lib/hooks';
-import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from '@/components/ui';
+import { Badge, Button, Input, Label } from '@/components/ui';
 import { EmptyState, PageHeader, PersonPicker } from '@/components/common';
+import { FaceContextDialog } from '@/components/FaceContextDialog';
 
 export function FaceReviewPage() {
     const queryClient = useQueryClient();
@@ -136,73 +137,53 @@ export function FaceReviewPage() {
                 )}
             </div>
 
-            <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-                <DialogContent className='max-w-2xl'>
-                    <DialogHeader>
-                        <DialogTitle>Review face</DialogTitle>
-                    </DialogHeader>
-                    {selected && (
-                        <div className='grid gap-5 px-6 pb-6 sm:grid-cols-[220px_minmax(0,1fr)]'>
-                            <div className='aspect-square overflow-hidden bg-surface-strong'>
-                                <img src={selected.thumbUrl} alt='' className='h-full w-full object-cover' />
-                            </div>
-                            <div className='space-y-4'>
-                                <div>
-                                    <p className='text-sm font-semibold'>Not assigned</p>
-                                    <p className='mt-1 text-xs text-muted'>
-                                        Detection {selected.detScore ? `${(selected.detScore * 100).toFixed(0)}%` : 'unknown'}
-                                        {' · '}
-                                        box {selected.bboxSource}
-                                    </p>
-                                    <Link
-                                        to={`/?photo=${selected.imageId}&face=${selected.id}`}
-                                        className='mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline'
-                                    >
-                                        Open in photo <ExternalLink size={12} />
-                                    </Link>
-                                </div>
+            <FaceContextDialog
+                open={!!selected}
+                onOpenChange={(open) => !open && setSelected(null)}
+                imageId={selected?.imageId ?? null}
+                faceId={selected?.id ?? null}
+            >
+                {selected && (
+                    <div className='space-y-4'>
+                        <PersonPicker
+                            people={people?.items ?? []}
+                            onSelect={(person) => assignTo(person.id)}
+                            trigger={
+                                <Button variant='secondary' className='w-full justify-start' disabled={busy}>
+                                    <UserPlus size={15} /> Assign to person
+                                </Button>
+                            }
+                        />
 
-                                <PersonPicker
-                                    people={people?.items ?? []}
-                                    onSelect={(person) => assignTo(person.id)}
-                                    trigger={
-                                        <Button variant='secondary' className='w-full justify-start' disabled={busy}>
-                                            <UserPlus size={15} /> Assign to person
-                                        </Button>
-                                    }
+                        <div className='space-y-2'>
+                            <Label htmlFor='face-review-name'>Or create a new person</Label>
+                            <div className='flex gap-2'>
+                                <Input
+                                    id='face-review-name'
+                                    value={name}
+                                    onChange={(event) => setName(event.target.value)}
+                                    placeholder='Name…'
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') void createAndAssign();
+                                    }}
                                 />
-
-                                <div className='space-y-2'>
-                                    <Label htmlFor='face-review-name'>Or create a new person</Label>
-                                    <div className='flex gap-2'>
-                                        <Input
-                                            id='face-review-name'
-                                            value={name}
-                                            onChange={(event) => setName(event.target.value)}
-                                            placeholder='Name…'
-                                            onKeyDown={(event) => {
-                                                if (event.key === 'Enter') void createAndAssign();
-                                            }}
-                                        />
-                                        <Button
-                                            variant='outline'
-                                            onClick={createAndAssign}
-                                            disabled={busy || !name.trim()}
-                                        >
-                                            {busy ? <Loader2 size={15} className='animate-spin' /> : <UserPlus size={15} />}
-                                            Create
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <Button variant='ghost' className='w-full justify-start text-danger' onClick={ignore} disabled={busy}>
-                                    <X size={15} /> Not a face
+                                <Button
+                                    variant='outline'
+                                    onClick={createAndAssign}
+                                    disabled={busy || !name.trim()}
+                                >
+                                    {busy ? <Loader2 size={15} className='animate-spin' /> : <UserPlus size={15} />}
+                                    Create
                                 </Button>
                             </div>
                         </div>
-                    )}
-                </DialogContent>
-            </Dialog>
+
+                        <Button variant='ghost' className='w-full justify-start text-danger' onClick={ignore} disabled={busy}>
+                            <X size={15} /> Not a face
+                        </Button>
+                    </div>
+                )}
+            </FaceContextDialog>
         </div>
     );
 }

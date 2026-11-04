@@ -1,6 +1,6 @@
 # ClusterLens
 
-A local-first smart gallery for recovered photo archives. It was built after a corrupted drive left thousands of photos without filenames, dates, or GPS, so it reconstructs what it can from the pixels: people, scenes, visual similarity, and a searchable library.
+A local-first smart gallery for recovered photo archives. It was built after a corrupted drive left thousands of photos with scrambled filenames and partial metadata, so it keeps the EXIF that survived and reconstructs what is missing from the pixels: people, scenes, visual similarity, and a searchable library.
 
 ![ClusterLens gallery with blurred sample photos](docs/screenshots/gallery.png)
 
@@ -60,7 +60,7 @@ No vector database, no cloud queue, no hosted demo. SQLite in WAL mode, two back
 ## Limits
 
 - First ingest is CPU-bound. On a 6-core Ryzen 5, face detection measured about 310 ms per image; SigLIP adds roughly 0.3 s per image. Expect one to two hours for 9,000 photos. Incremental scans are fast.
-- Dates come from EXIF only. Recovered file mtimes are treated as unreliable, so most photos show an unknown date instead of a made-up one.
+- Dates come from EXIF when present. Many recovered files kept their capture date, and those populate the Years view and person timelines. Files without a usable EXIF date show unknown rather than an inferred date; recovered file mtimes are treated as unreliable.
 - The folder watcher is not wired yet. Adding a source scans it; new files need a rescan until the watcher lands.
 - Manual face creation and a drag-and-drop box editor are not there yet. A selected face can be reassigned, ignored, or corrected through numeric box coordinates, which re-embeds the face.
 - Events are reserved in the export shape but not inferred yet.

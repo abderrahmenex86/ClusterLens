@@ -1398,7 +1398,7 @@ def list_clusters(request: Request, run_id: int | None = None):
     items = []
     for row in rows:
         faces = database.query(
-            "SELECT f.id FROM faces f WHERE f.cluster_id = ? AND f.ignored_at IS NULL "
+            "SELECT f.id, f.image_id FROM faces f WHERE f.cluster_id = ? AND f.ignored_at IS NULL "
             "ORDER BY f.det_score DESC LIMIT 9",
             (row["id"],),
         )
@@ -1408,6 +1408,10 @@ def list_clusters(request: Request, run_id: int | None = None):
                 "runId": int(row["run_id"]),
                 "size": int(row["size"]),
                 "sampleFaceIds": [int(face["id"]) for face in faces],
+                "sampleFaces": [
+                    {"id": int(face["id"]), "imageId": int(face["image_id"])}
+                    for face in faces
+                ],
                 "createdAt": row["created_at"],
             }
         )
