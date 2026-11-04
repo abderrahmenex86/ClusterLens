@@ -8,7 +8,18 @@ from types import SimpleNamespace
 
 from backend.config import Settings
 from backend.db import Database, now_iso
-from backend.services import Services, ServiceError
+from backend.services import Services, ServiceError, _stratified_test_size
+
+
+class ClassifierSplitTests(unittest.TestCase):
+    def test_keeps_at_least_one_face_per_class_on_both_sides(self):
+        self.assertEqual(_stratified_test_size(20, 5), 5)
+        self.assertEqual(_stratified_test_size(10, 5), 5)
+        self.assertEqual(_stratified_test_size(12, 5), 5)
+        self.assertEqual(_stratified_test_size(30, 6), 6)
+        self.assertEqual(_stratified_test_size(100, 10), 20)
+        self.assertIsNone(_stratified_test_size(8, 5))
+        self.assertIsNone(_stratified_test_size(20, 11))
 
 
 class StubContext:

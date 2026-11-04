@@ -130,6 +130,14 @@ def _document_label(db: Database, image_id: int) -> str | None:
     return str(row["label"]) if row else None
 
 
+def _stratified_test_size(n_samples: int, n_classes: int) -> int | None:
+    if n_classes < 2 or n_samples < 2 * n_classes:
+        return None
+    size = max(n_classes, int(round(n_samples * 0.2)))
+    size = min(size, n_samples - n_classes)
+    return size if size >= n_classes else None
+
+
 def _face_count(db: Database, image_id: int) -> int:
     return int(
         db.scalar(
@@ -832,11 +840,12 @@ class Services:
         ctx.progress(0, len(x), "Training classifier")
 
         counts = Counter(y_values)
-        can_stratify = len(x) >= 10 and min(counts.values()) >= 2
+        test_size = _stratified_test_size(len(x), len(classes))
+        can_stratify = test_size is not None and min(counts.values()) >= 2
         metrics: dict[str, Any] = {}
         if can_stratify:
             x_train, x_test, y_train, y_test = train_test_split(
-                x, y, test_size=0.2, random_state=1337, stratify=y
+                x, y, test_size=test_size, random_state=1337, stratify=y
             )
         else:
             x_train, y_train = x, y
