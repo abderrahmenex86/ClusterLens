@@ -20,6 +20,7 @@ from .jobs import (
     request_pause,
     request_resume,
 )
+from .ml import load_image_asset, save_thumbnails
 from .services import ModelNotReady, ServiceError
 
 
@@ -278,6 +279,11 @@ class PickFolders(BaseModel):
     multiple_separator: str = "\n"
 
 
+class ResetRequest(BaseModel):
+    keep_sources: bool = True
+    rescan: bool = True
+
+
 def _validate_name(database, name: str, exclude_id: int | None = None) -> str:
     cleaned = name.strip()
     if not cleaned:
@@ -313,6 +319,91 @@ def system_info(request: Request):
             "used": usage.used,
         },
         "stats": services(request).stats(),
+    }
+
+
+@router.post("/system/reset")
+def reset_library(payload: ResetRequest, request: Request):
+    database = db(request)
+    active = int(
+        database.scalar(
+            "SELECT COUNT(*) FROM jobs WHERE status IN ('queued','running','paused')"
+        )
+        or 0
+    )
+    if active:
+        raise HTTPException(409, "Pause or cancel active jobs before resetting")
+
+    app_settings = settings(request)
+    data_dir = app_settings.data_dir.resolve()
+    for cache_dir in (
+        app_settings.thumbs_dir,
+        app_settings.faces_dir,
+        app_settings.models_dir,
+    ):
+        resolved = cache_dir.resolve()
+        if resolved == data_dir or not resolved.is_relative_to(data_dir):
+            raise HTTPException(500, "Refusing to remove a cache outside the app data directory")
+        if resolved.exists():
+            shutil.rmtree(resolved)
+        resolved.mkdir(parents=True, exist_ok=True)
+
+    tables = [
+        "export_items",
+        "exports",
+        "job_errors",
+        "jobs",
+        "face_corrections",
+        "faces",
+        "clusters",
+        "cluster_runs",
+        "scene_labels",
+        "image_embeddings",
+        "files",
+        "images",
+        "people",
+        "classifier_runs",
+    ]
+    with database.transaction() as conn:
+        for table in tables:
+            conn.execute(f"DELETE FROM {table}")
+        if payload.keep_sources:
+            conn.execute(
+                "UPDATE sources SET status = 'idle', last_error = NULL, last_scan_at = NULL"
+            )
+            reset_tables = [table for table in tables if table != "sources"]
+        else:
+            conn.execute("DELETE FROM sources")
+            reset_tables = tables + ["sources"]
+        placeholders = ",".join("?" for _ in reset_tables)
+        conn.execute(
+            f"DELETE FROM sqlite_sequence WHERE name IN ({placeholders})",
+            reset_tables,
+        )
+
+    jobs: list[int] = []
+    if payload.keep_sources and payload.rescan:
+        for source in database.query("SELECT id FROM sources WHERE enabled = 1"):
+            job_id, _ = enqueue_job(
+                database,
+                "scan",
+                "io",
+                source_id=int(source["id"]),
+                payload={"source_id": int(source["id"])},
+                priority=50,
+            )
+            jobs.append(job_id)
+
+    try:
+        database.execute("VACUUM")
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "keptSources": bool(payload.keep_sources),
+        "jobs": jobs,
+        "message": "Index and caches cleared. Source files and exported folders were not touched.",
     }
 
 
@@ -779,7 +870,48 @@ def get_image(image_id: int, request: Request):
 def image_preview(image_id: int, request: Request, size: int = 1024):
     if size not in (256, 1024):
         raise HTTPException(400, "size must be 256 or 1024")
-    path = settings(request).thumbs_dir / str(image_id) / f"{size}.webp"
+    database = db(request)
+    app_settings = settings(request)
+    path = app_settings.thumbs_dir / str(image_id) / f"{size}.webp"
+
+    if not path.exists():
+        # Backfill a missing cache entry from the original file. This also makes
+        # old libraries work after a cache directory move.
+        row = database.query_one(
+            "SELECT f.rel_path, s.path AS source_path FROM files f "
+            "JOIN sources s ON s.id = f.source_id "
+            "WHERE f.image_id = ? AND f.missing_at IS NULL "
+            "ORDER BY f.size DESC LIMIT 1",
+            (image_id,),
+        )
+        if row is None:
+            raise HTTPException(404, "Preview not ready")
+        try:
+            asset = load_image_asset(Path(row["source_path"]) / row["rel_path"])
+            save_thumbnails(asset.image, image_id, app_settings.thumbs_dir)
+            database.execute(
+                "UPDATE images SET width = COALESCE(width, ?), height = COALESCE(height, ?), "
+                "orientation = COALESCE(orientation, ?), mime_type = COALESCE(mime_type, ?), "
+                "date_taken = COALESCE(date_taken, ?), "
+                "date_source = CASE WHEN date_taken IS NULL THEN ? ELSE date_source END, "
+                "phash = COALESCE(phash, ?), thumb_at = COALESCE(thumb_at, ?), "
+                "status = CASE WHEN status = 'pending' THEN 'thumbed' ELSE status END, "
+                "error = NULL WHERE id = ?",
+                (
+                    asset.width,
+                    asset.height,
+                    asset.orientation,
+                    asset.mime_type,
+                    asset.date_taken,
+                    asset.date_source,
+                    asset.phash,
+                    now_iso(),
+                    image_id,
+                ),
+            )
+        except Exception:
+            raise HTTPException(404, "Preview not ready")
+
     if not path.exists():
         raise HTTPException(404, "Preview not ready")
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "public, max-age=86400"})

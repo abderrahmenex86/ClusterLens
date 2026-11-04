@@ -1,12 +1,25 @@
-import { HardDrive, Loader2, Moon, ShieldCheck, Sparkles, Sun } from 'lucide-react';
+import { Loader2, Moon, ShieldCheck, Sparkles, Sun, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { api, formatBytes } from '@/lib/api';
-import { useClassifier, useSettings, useStats } from '@/lib/hooks';
+import { useClassifier, useJobs, useSettings, useStats } from '@/lib/hooks';
 import { useTheme } from '@/lib/theme';
-import { Badge, Button, Input, Label, Separator, Switch } from '@/components/ui';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Input,
+    Label,
+    Switch,
+} from '@/components/ui';
 import { PageHeader } from '@/components/common';
 
 export function SettingsPage() {
@@ -14,10 +27,18 @@ export function SettingsPage() {
     const { data: settings, refetch } = useSettings();
     const { data: classifier } = useClassifier();
     const { data: stats } = useStats();
+    const { data: jobs } = useJobs();
     const { data: info } = useQuery({ queryKey: ['system-info'], queryFn: api.systemInfo });
     const { theme, toggle } = useTheme();
     const [values, setValues] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetting, setResetting] = useState(false);
+    const [keepSources, setKeepSources] = useState(true);
+    const [rescan, setRescan] = useState(true);
+    const activeJobs = (jobs?.items ?? []).some((job) =>
+        ['queued', 'running', 'paused'].includes(job.status)
+    );
 
     useEffect(() => {
         if (settings) setValues(settings);
@@ -58,6 +79,21 @@ export function SettingsPage() {
             await queryClient.invalidateQueries({ queryKey: ['jobs'] });
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not train classifier');
+        }
+    }
+
+    async function resetLibrary() {
+        setResetting(true);
+        try {
+            const result = await api.resetLibrary(keepSources, keepSources && rescan);
+            toast.success(result.message);
+            queryClient.clear();
+            window.location.href = '/';
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not reset the library');
+            setResetOpen(false);
+        } finally {
+            setResetting(false);
         }
     }
 
@@ -193,6 +229,27 @@ export function SettingsPage() {
                             />
                         </div>
                     </section>
+
+                    <section className='rounded-3xl border border-danger/30 bg-danger-soft/30 p-5'>
+                        <h2 className='text-sm font-semibold text-danger'>Danger zone</h2>
+                        <p className='mt-1 text-xs leading-5 text-muted'>
+                            Clears the index, thumbnails, face crops, classifier models, and export history.
+                            Source folders and exported copies are never touched.
+                        </p>
+                        <Button
+                            variant='outline'
+                            className='mt-3 border-danger/40 text-danger hover:bg-danger-soft'
+                            onClick={() => setResetOpen(true)}
+                            disabled={activeJobs}
+                        >
+                            <Trash2 size={15} /> Reset library
+                        </Button>
+                        {activeJobs && (
+                            <p className='mt-2 text-xs text-warning'>
+                                Pause or cancel active jobs before resetting.
+                            </p>
+                        )}
+                    </section>
                 </div>
 
                 <aside className='space-y-4'>
@@ -244,6 +301,47 @@ export function SettingsPage() {
                     </section>
                 </aside>
             </div>
+
+            <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+                <AlertDialogContent>
+                    <AlertDialogTitle>Reset the library?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The index, thumbnails, face crops, classifier models, export history, and all confirmed
+                        people will be deleted. Original source folders and exported copies stay on disk.
+                    </AlertDialogDescription>
+                    <div className='mt-4 space-y-3'>
+                        <div className='flex items-center justify-between gap-3 rounded-2xl border border-line p-3'>
+                            <div>
+                                <p className='text-sm font-semibold'>Keep source folders</p>
+                                <p className='text-xs text-muted'>Leaves the source list in place for re-indexing.</p>
+                            </div>
+                            <Switch checked={keepSources} onCheckedChange={setKeepSources} />
+                        </div>
+                        <div className='flex items-center justify-between gap-3 rounded-2xl border border-line p-3'>
+                            <div>
+                                <p className='text-sm font-semibold'>Rescan after reset</p>
+                                <p className='text-xs text-muted'>Queues a fresh scan for every enabled source.</p>
+                            </div>
+                            <Switch
+                                checked={rescan}
+                                onCheckedChange={setRescan}
+                                disabled={!keepSources}
+                            />
+                        </div>
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                            <Button variant='ghost'>Cancel</Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                            <Button variant='danger' onClick={resetLibrary} disabled={resetting}>
+                                {resetting ? <Loader2 size={15} className='animate-spin' /> : <Trash2 size={15} />}
+                                Reset library
+                            </Button>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

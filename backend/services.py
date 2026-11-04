@@ -128,6 +128,7 @@ class Services:
         self.ml = MLRegistry(settings)
         self.handlers = {
             "scan": self.handle_scan,
+            "thumbnail": self.handle_thumbnail,
             "analyze": self.handle_analyze,
             "assign": self.handle_assign,
             "cluster": self.handle_cluster,
@@ -263,6 +264,17 @@ class Services:
             )
             ctx.progress(seen, seen, f"Scanned {seen} files · {new_images} new images")
 
+            pending_thumbs = int(
+                self.db.scalar(
+                    "SELECT COUNT(*) FROM images i WHERE i.thumb_at IS NULL "
+                    "AND i.status != 'error' "
+                    "AND EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id "
+                    "AND f.missing_at IS NULL)"
+                )
+                or 0
+            )
+            if pending_thumbs:
+                enqueue_job(self.db, "thumbnail", "io", priority=30)
             if new_images:
                 enqueue_job(self.db, "analyze", "ml", priority=20)
         except Exception:
@@ -272,11 +284,88 @@ class Services:
             )
             raise
 
+    # -------------------------------------------------------------- thumbnail
+    def handle_thumbnail(self, ctx: JobContext) -> None:
+        rows = self.db.query(
+            "SELECT i.* FROM images i WHERE i.thumb_at IS NULL AND i.status != 'error' "
+            "AND EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL) "
+            "ORDER BY i.id"
+        )
+        total = len(rows)
+        if total == 0:
+            return
+        ctx.set_total(total, "images")
+        ctx.progress(0, total, f"Generating thumbnails · 0/{total}")
+
+        for index, image in enumerate(rows, start=1):
+            ctx.checkpoint()
+            image_id = int(image["id"])
+            file_row = _canonical_file(self.db, image_id)
+            if file_row is None:
+                continue
+            source = self.db.query_one(
+                "SELECT path FROM sources WHERE id = ?", (file_row["source_id"],)
+            )
+            if source is None:
+                continue
+            abs_path = Path(source["path"]) / file_row["rel_path"]
+            try:
+                asset = load_image_asset(abs_path)
+                save_thumbnails(asset.image, image_id, self.settings.thumbs_dir)
+                self.db.execute(
+                    "UPDATE images SET width = ?, height = ?, orientation = ?, "
+                    "mime_type = ?, date_taken = COALESCE(date_taken, ?), "
+                    "date_source = CASE WHEN date_taken IS NULL THEN ? ELSE date_source END, "
+                    "phash = ?, thumb_at = ?, "
+                    "status = CASE WHEN status = 'pending' THEN 'thumbed' ELSE status END, "
+                    "error = NULL WHERE id = ?",
+                    (
+                        asset.width,
+                        asset.height,
+                        asset.orientation,
+                        asset.mime_type,
+                        asset.date_taken,
+                        asset.date_source,
+                        asset.phash,
+                        now_iso(),
+                        image_id,
+                    ),
+                )
+            except Exception as exc:
+                self.db.execute(
+                    "UPDATE images SET status = 'error', error = ? WHERE id = ?",
+                    (f"thumbnail: {exc}"[:1500], image_id),
+                )
+                ctx.log_error(str(exc), "image", image_id)
+            ctx.progress(index, total, f"Generating thumbnails · {index}/{total}")
+
+        pending = int(
+            self.db.scalar(
+                "SELECT COUNT(*) FROM images i WHERE i.thumb_at IS NULL AND i.status != 'error' "
+                "AND EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL)"
+            )
+            or 0
+        )
+        if pending:
+            enqueue_job(
+                self.db, "thumbnail", "io", priority=30, reuse_active=False
+            )
+
     # --------------------------------------------------------------- analyze
     def handle_analyze(self, ctx: JobContext) -> None:
+        missing_thumbs = int(
+            self.db.scalar(
+                "SELECT COUNT(*) FROM images i WHERE i.thumb_at IS NULL AND i.status != 'error' "
+                "AND EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL)"
+            )
+            or 0
+        )
+        if missing_thumbs:
+            enqueue_job(self.db, "thumbnail", "io", priority=30)
+
         rows = self.db.query(
             "SELECT i.* FROM images i WHERE "
-            "(i.thumb_at IS NULL OR i.faces_at IS NULL OR i.embed_at IS NULL OR i.scene_at IS NULL) "
+            "(i.faces_at IS NULL OR i.embed_at IS NULL OR i.scene_at IS NULL) "
             "AND i.status != 'error' "
             "AND EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL) "
             "ORDER BY i.id"
@@ -314,7 +403,6 @@ class Services:
                 continue
 
             error_parts: list[str] = []
-            need_thumb = image["thumb_at"] is None
             need_faces = image["faces_at"] is None
             need_embed = image["embed_at"] is None
             need_scene = scenes_enabled and image["scene_at"] is None
@@ -331,29 +419,6 @@ class Services:
                     need_embed = True
             if need_scene and vector is None:
                 need_embed = True
-
-            if need_thumb:
-                try:
-                    save_thumbnails(asset.image, image_id, self.settings.thumbs_dir)
-                    self.db.execute(
-                        "UPDATE images SET width = ?, height = ?, orientation = ?, "
-                        "mime_type = ?, date_taken = COALESCE(date_taken, ?), "
-                        "date_source = CASE WHEN date_taken IS NULL THEN ? ELSE date_source END, "
-                        "phash = ?, thumb_at = ?, error = NULL WHERE id = ?",
-                        (
-                            asset.width,
-                            asset.height,
-                            asset.orientation,
-                            asset.mime_type,
-                            asset.date_taken,
-                            asset.date_source,
-                            asset.phash,
-                            now_iso(),
-                            image_id,
-                        ),
-                    )
-                except Exception as exc:
-                    error_parts.append(f"thumbnail: {exc}")
 
             if need_faces:
                 faces: list[FaceResult] = []
@@ -489,7 +554,7 @@ class Services:
         pending = int(
             self.db.scalar(
                 "SELECT COUNT(*) FROM images i WHERE "
-                "(i.thumb_at IS NULL OR i.faces_at IS NULL OR i.embed_at IS NULL OR i.scene_at IS NULL) "
+                "(i.faces_at IS NULL OR i.embed_at IS NULL OR i.scene_at IS NULL) "
                 "AND i.status != 'error' "
                 "AND EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL)"
             )
@@ -497,6 +562,16 @@ class Services:
         )
         if pending:
             enqueue_job(self.db, "analyze", "ml", priority=20, reuse_active=False)
+
+        pending_thumbs = int(
+            self.db.scalar(
+                "SELECT COUNT(*) FROM images i WHERE i.thumb_at IS NULL AND i.status != 'error' "
+                "AND EXISTS (SELECT 1 FROM files f WHERE f.image_id = i.id AND f.missing_at IS NULL)"
+            )
+            or 0
+        )
+        if pending_thumbs:
+            enqueue_job(self.db, "thumbnail", "io", priority=30, reuse_active=False)
 
     def _mark_image_error(self, image_id: int, message: str) -> None:
         now = now_iso()

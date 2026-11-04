@@ -246,6 +246,11 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ multiple }),
         }),
+    resetLibrary: (keepSources = true, rescan = true) =>
+        request<{ status: string; keptSources: boolean; jobs: number[]; message: string }>('/system/reset', {
+            method: 'POST',
+            body: JSON.stringify({ keep_sources: keepSources, rescan }),
+        }),
 
     sources: () => request<{ items: Source[] }>('/sources'),
     addSources: (paths: string[], labels: Record<string, string> = {}, recursive = true) =>

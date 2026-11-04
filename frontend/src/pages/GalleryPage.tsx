@@ -144,7 +144,9 @@ export function GalleryPage() {
                         ? `${total.toLocaleString()} semantic matches in your local library.`
                         : hasFilters
                           ? `${total.toLocaleString()} photos match these filters.`
-                          : `${total.toLocaleString()} photos indexed locally. Nothing leaves this machine.`
+                          : stats?.pendingImages
+                            ? `${total.toLocaleString()} of ${stats.images.toLocaleString()} photos ready · ${stats.pendingImages.toLocaleString()} pending analysis. Nothing leaves this machine.`
+                            : `${total.toLocaleString()} photos indexed locally. Nothing leaves this machine.`
                 }
                 actions={
                     <>

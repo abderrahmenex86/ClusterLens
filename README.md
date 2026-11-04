@@ -12,6 +12,7 @@ A local-first smart gallery for recovered photo archives. It was built after a c
 - Searches the library in natural language with SigLIP image and text embeddings, then filters by person, scene, source, or year.
 - Labels scenes with zero-shot prompts, so a beach, a room, a document, or a screenshot can be found without a second classifier.
 - Exports full-photo copies into a people-first tree, with scenes, years, and unknown as fallbacks. Every copy is recorded in `.clusterlens/manifest.jsonl`.
+- Resets the index, thumbnails, classifier models, and export history from Settings without touching the source folders or exported copies.
 
 ## Run it
 
@@ -40,7 +41,7 @@ Set `CLUSTERLENS_DATA_DIR` to choose where the SQLite database, thumbnails, face
 
 ## How it works
 
-Adding a source queues a background scan. The scanner hashes files, links exact duplicates to one image, and marks missing files without deleting their metadata. An analysis job then generates thumbnails, extracts face boxes and 512-D embeddings, computes a SigLIP image embedding, and stores zero-shot scene labels.
+Adding a source queues a background scan. The scanner hashes files, links exact duplicates to one image, and marks missing files without deleting their metadata. A separate IO job generates thumbnails first, so the gallery fills before the slower analysis. The analysis job then extracts face boxes and 512-D embeddings, computes a SigLIP image embedding, and stores zero-shot scene labels.
 
 New faces first go through k-NN against confirmed faces. If a classifier is trained, its probability is used as a second opinion; uncertain faces stay in Unsorted. HDBSCAN proposes new people from that pool, and naming a proposal is what creates a person. Corrections are logged, a face moved away from a person becomes a cannot-link for that person, and enough corrections queue a classifier retrain.
 

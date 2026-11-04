@@ -190,6 +190,20 @@ class ScanReadOnlyTests(unittest.TestCase):
         self.assertEqual(int(self.db.scalar("SELECT COUNT(*) FROM images")), 1)
         self.assertTrue(image_path.exists())
 
+    def test_thumbnail_job_generates_cache(self):
+        from PIL import Image
+
+        image_path = self.source / "thumb.png"
+        Image.new("RGB", (96, 64), "blue").save(image_path)
+        ctx = StubContext(1, {"source_id": 1})
+        self.services.handle_scan(ctx)
+        image_id = int(self.db.scalar("SELECT id FROM images"))
+        self.assertIsNone(self.db.scalar("SELECT thumb_at FROM images WHERE id = ?", (image_id,)))
+
+        self.services.handle_thumbnail(StubContext(2, {}))
+        self.assertIsNotNone(self.db.scalar("SELECT thumb_at FROM images WHERE id = ?", (image_id,)))
+        self.assertTrue((self.settings.thumbs_dir / str(image_id) / "256.webp").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
