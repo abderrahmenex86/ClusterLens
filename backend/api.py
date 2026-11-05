@@ -713,6 +713,13 @@ def analyze_now(request: Request):
     return {"jobId": job_id}
 
 
+@router.post("/jobs/assign")
+def assign_now(request: Request):
+    database = db(request)
+    job_id, _ = enqueue_job(database, "assign", "ml", priority=15)
+    return {"jobId": job_id}
+
+
 @router.get("/jobs/{job_id}")
 def get_job(job_id: int, request: Request):
     database = db(request)

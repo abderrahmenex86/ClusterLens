@@ -1,4 +1,4 @@
-import { Activity, FolderOpen, Loader2, Moon, ShieldCheck, Sparkles, Sun, Trash2 } from 'lucide-react';
+import { Activity, FolderOpen, Loader2, Moon, ShieldCheck, Sparkles, Sun, Trash2, UserCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
@@ -71,6 +71,22 @@ export function SettingsPage() {
             await queryClient.invalidateQueries({ queryKey: ['jobs'] });
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not recluster');
+        }
+    }
+
+    async function assignFaces() {
+        try {
+            await api.assignFaces();
+            toast.success('Face assignment queued');
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+                queryClient.invalidateQueries({ queryKey: ['stats'] }),
+                queryClient.invalidateQueries({ queryKey: ['review'] }),
+                queryClient.invalidateQueries({ queryKey: ['clusters'] }),
+                queryClient.invalidateQueries({ queryKey: ['people'] }),
+            ]);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not queue assignment');
         }
     }
 
@@ -273,6 +289,21 @@ export function SettingsPage() {
                         <p className='mt-2 text-[11px] leading-4 text-muted'>
                             Training runs from the Train SVM button in the header.
                         </p>
+                        <Button
+                            variant='secondary'
+                            size='sm'
+                            className='mt-3 w-full'
+                            onClick={assignFaces}
+                            disabled={!classifier?.trainedAt || !stats?.unsortedFaces || activeJobs}
+                            title={
+                                classifier?.trainedAt
+                                    ? 'Apply k-NN and the classifier to unsorted faces'
+                                    : 'Train the classifier first'
+                            }
+                        >
+                            <UserCheck size={14} />
+                            Assign unsorted faces ({stats?.unsortedFaces ?? 0})
+                        </Button>
                     </section>
 
                     <section className='rounded-3xl border border-line bg-surface p-4'>

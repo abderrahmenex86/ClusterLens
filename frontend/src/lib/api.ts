@@ -375,6 +375,7 @@ export const api = {
 
     classifier: () => request<ClassifierStatus>('/classifier'),
     trainClassifier: () => request<{ jobId: number }>('/classifier/train', { method: 'POST' }),
+    assignFaces: () => request<{ jobId: number }>('/jobs/assign', { method: 'POST' }),
 
     exportPreview: (destination: string) =>
         request<ExportPreview>('/exports/preview', {

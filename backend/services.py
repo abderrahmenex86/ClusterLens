@@ -705,6 +705,15 @@ class Services:
                 )
             ctx.progress(index, total, f"Assigning faces · {index}/{total}")
 
+        unsorted = int(
+            self.db.scalar(
+                "SELECT COUNT(*) FROM faces WHERE person_id IS NULL AND ignored_at IS NULL"
+            )
+            or 0
+        )
+        if unsorted >= int(self.db.get_setting("cluster_min_size", "4") or 4):
+            enqueue_job(self.db, "cluster", "ml", priority=10)
+
     def _load_active_classifier(self):
         row = self.db.query_one(
             "SELECT * FROM classifier_runs WHERE active = 1 "
