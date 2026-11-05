@@ -1,5 +1,5 @@
 import { Filter, ImageOff, Loader2, Plus, Sparkles, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -45,7 +45,9 @@ export function GalleryPage() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [moreError, setMoreError] = useState<string | null>(null);
     const [error, setError] = useState<unknown>(null);
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
     const photoParam = searchParams.get('photo');
     const photoId = photoParam ? Number(photoParam) : null;
@@ -126,6 +128,7 @@ export function GalleryPage() {
         let cancelled = false;
         setLoading(true);
         setLoadingMore(false);
+        setMoreError(null);
         setError(null);
         setItems([]);
         setTotal(0);
@@ -156,12 +159,30 @@ export function GalleryPage() {
             const page = await fetchPage(items.length);
             setItems((current) => [...current, ...page.items]);
             setTotal(page.total);
+            setMoreError(null);
         } catch (reason) {
-            toast.error(reason instanceof Error ? reason.message : 'Could not load more photos');
+            setMoreError(reason instanceof Error ? reason.message : 'Could not load more photos');
         } finally {
             setLoadingMore(false);
         }
     }
+
+    useEffect(() => {
+        if (loadingMore || moreError || items.length >= total) return;
+        const target = loadMoreRef.current;
+        if (!target) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    observer.disconnect();
+                    void loadMore();
+                }
+            },
+            { rootMargin: '600px 0px' }
+        );
+        observer.observe(target);
+        return () => observer.disconnect();
+    }, [items.length, total, loadingMore, moreError]);
 
     async function reload() {
         setLoading(true);
@@ -343,14 +364,32 @@ export function GalleryPage() {
                                 </div>
                             </section>
                         ))}
-                        {items.length < total && (
-                            <div className='flex justify-center py-8'>
-                                <Button variant='secondary' onClick={loadMore} disabled={loadingMore}>
-                                    {loadingMore ? <Loader2 size={15} className='animate-spin' /> : null}
-                                    Load more
-                                </Button>
-                            </div>
-                        )}
+                        {items.length < total &&
+                            (moreError ? (
+                                <div className='flex justify-center py-8'>
+                                    <Button
+                                        variant='secondary'
+                                        onClick={() => {
+                                            setMoreError(null);
+                                            void loadMore();
+                                        }}
+                                    >
+                                        Retry loading
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div
+                                    ref={loadMoreRef}
+                                    className='flex h-12 items-center justify-center'
+                                >
+                                    {loadingMore && (
+                                        <>
+                                            <Loader2 size={16} className='animate-spin text-muted' />
+                                            <span className='sr-only'>Loading more photos</span>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
                         {items.length >= total && items.length > 0 && (
                             <p className='py-8 text-center text-xs text-muted'>
                                 {total.toLocaleString()} photos · end of this view
