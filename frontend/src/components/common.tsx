@@ -132,6 +132,11 @@ export function PersonPicker({
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [newName, setNewName] = useState('');
+    function close() {
+        setOpen(false);
+        setQuery('');
+        setNewName('');
+    }
     const filtered = useMemo(
         () =>
             people
@@ -142,7 +147,13 @@ export function PersonPicker({
     );
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+            open={open}
+            onOpenChange={(next) => {
+                if (next) setOpen(true);
+                else close();
+            }}
+        >
             <PopoverTrigger asChild>{trigger}</PopoverTrigger>
             <PopoverContent className='w-80 p-2'>
                 <div className='relative'>
@@ -165,7 +176,7 @@ export function PersonPicker({
                             type='button'
                             onClick={() => {
                                 onSelect(person);
-                                setOpen(false);
+                                close();
                             }}
                             className='flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-surface-strong'
                         >
@@ -195,8 +206,7 @@ export function PersonPicker({
                                 onKeyDown={(event) => {
                                     if (event.key === 'Enter' && newName.trim()) {
                                         onCreate(newName.trim());
-                                        setNewName('');
-                                        setOpen(false);
+                                        close();
                                     }
                                 }}
                             />
@@ -205,8 +215,7 @@ export function PersonPicker({
                                 disabled={!newName.trim()}
                                 onClick={() => {
                                     onCreate(newName.trim());
-                                    setNewName('');
-                                    setOpen(false);
+                                    close();
                                 }}
                             >
                                 <Plus size={14} />
