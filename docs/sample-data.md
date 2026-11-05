@@ -1,6 +1,6 @@
 # Preview data
 
-The screenshots use a 24-photo toy library: four photos for each of five CelebA identities (21, 22, 23, 234, and 59), plus four document images.
+The screenshots use a 104-photo toy library: five photos for each of twenty CelebA identities, plus four document images. Eighteen identities are confirmed; two remain as review proposals.
 
 CelebA is available for non-commercial research purposes only. The source images are not committed and are not redistributed. The screenshots blur the faces. CelebA identity labels are numeric; the dataset does not ship names.
 
