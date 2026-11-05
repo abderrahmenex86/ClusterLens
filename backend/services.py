@@ -1276,7 +1276,10 @@ class Services:
         clauses: list[str] = []
         params: list[Any] = []
         if person_id is not None:
-            clauses.append("EXISTS (SELECT 1 FROM faces f WHERE f.image_id = i.id AND f.person_id = ?)")
+            clauses.append(
+                "EXISTS (SELECT 1 FROM faces f WHERE f.image_id = i.id "
+                "AND f.person_id = ? AND f.ignored_at IS NULL)"
+            )
             params.append(person_id)
         if scene:
             clauses.append("EXISTS (SELECT 1 FROM scene_labels s WHERE s.image_id = i.id AND s.label = ?)")

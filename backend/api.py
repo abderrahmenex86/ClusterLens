@@ -793,7 +793,8 @@ def list_images(
     params: list[Any] = []
     if person_id is not None:
         clauses.append(
-            "EXISTS (SELECT 1 FROM faces f WHERE f.image_id = i.id AND f.person_id = ?)"
+            "EXISTS (SELECT 1 FROM faces f WHERE f.image_id = i.id "
+            "AND f.person_id = ? AND f.ignored_at IS NULL)"
         )
         params.append(person_id)
     if scene:

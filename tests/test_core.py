@@ -158,6 +158,39 @@ class ExportRoutingTests(unittest.TestCase):
         self.assertEqual(preview["copies"], 8)
         self.assertEqual(preview["multiPersonPhotos"], 1)
 
+    def test_ignored_faces_do_not_put_photos_in_person_views(self):
+        from backend.api import list_images
+
+        self._add_image(8, "eight.jpg", people=[1])
+        self.db.execute(
+            "UPDATE images SET thumb_at = ? WHERE id IN (1, 2, 8)", (now_iso(),)
+        )
+        self.db.execute(
+            "UPDATE faces SET ignored_at = ? WHERE image_id = 8", (now_iso(),)
+        )
+        request = SimpleNamespace(
+            app=SimpleNamespace(state=SimpleNamespace(db=self.db))
+        )
+        result = list_images(
+            request,
+            person_id=1,
+            scene=None,
+            source_id=None,
+            year=None,
+            has_faces=None,
+            unsorted=None,
+            document=None,
+            limit=50,
+            offset=0,
+        )
+        self.assertEqual({item["id"] for item in result["items"]}, {1, 2})
+        self.assertEqual(
+            self.services._filtered_image_ids(
+                person_id=1, scene=None, source_id=None, year=None
+            ),
+            {1, 2},
+        )
+
     def test_destination_inside_source_is_rejected(self):
         with self.assertRaises(ServiceError):
             self.services.export_preview(str(self.source / "export"))
