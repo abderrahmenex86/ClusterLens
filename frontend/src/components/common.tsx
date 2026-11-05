@@ -224,11 +224,13 @@ export function FaceThumb({
     person,
     className,
     selected,
+    plain = false,
 }: {
     faceId: number;
     person?: PersonRef | null;
     className?: string;
     selected?: boolean;
+    plain?: boolean;
 }) {
     return (
         <span
@@ -238,13 +240,19 @@ export function FaceThumb({
                 className
             )}
         >
-            <img src={`/api/faces/${faceId}/thumb`} alt='' className='h-full w-full object-cover' />
-            {person && (
+            <img
+                src={`/api/faces/${faceId}/thumb?v=20261105`}
+                alt=''
+                loading='lazy'
+                decoding='async'
+                className='h-full w-full object-cover'
+            />
+            {!plain && person && (
                 <span className='absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white'>
                     {person.name}
                 </span>
             )}
-            {!person && (
+            {!plain && !person && (
                 <span className='absolute right-1 top-1 rounded-full bg-accent p-0.5 text-accent-ink'>
                     <UserRound size={10} />
                 </span>

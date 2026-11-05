@@ -71,7 +71,7 @@ export function FaceContextDialog({
                                 {face && (
                                     <div className='flex items-center gap-3'>
                                         <img
-                                            src={`/api/faces/${face.id}/thumb`}
+                                            src={`/api/faces/${face.id}/thumb?v=20261105`}
                                             alt=''
                                             className='h-24 w-24 shrink-0 border border-line object-cover'
                                         />

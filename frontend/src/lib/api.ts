@@ -332,7 +332,8 @@ export const api = {
     timeline: () => request<{ items: TimelineYear[] }>('/timeline'),
     stats: () => request<Stats>('/stats'),
 
-    people: (q?: string) => request<{ items: Person[]; total: number }>(`/people${query({ q })}`),
+    people: (q?: string) =>
+        request<{ items: Person[]; total: number }>(`/people${query({ q, limit: 200 })}`),
     person: (id: number) => request<PersonDetail>(`/people/${id}`),
     createPerson: (name: string, faceIds: number[] = []) =>
         request<Person>('/people', { method: 'POST', body: JSON.stringify({ name, face_ids: faceIds }) }),
@@ -343,7 +344,10 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ source_id: sourceId, target_id: targetId }),
         }),
-    personFaces: (id: number) => request<{ items: Face[] }>(`/people/${id}/faces`),
+    personFaces: (id: number, limit = 200, offset = 0) =>
+        request<{ items: Face[]; total: number }>(
+            `/people/${id}/faces?limit=${limit}&offset=${offset}`
+        ),
 
     patchFace: (id: number, values: { personId?: number; ignored?: boolean; bbox?: [number, number, number, number] }) =>
         request<{ face: Face; correctionId: number | null; jobId: number | null }>(`/faces/${id}`, {

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { api } from '@/lib/api';
-import { usePeople, usePerson } from '@/lib/hooks';
+import { usePeople, usePerson, usePersonFaces } from '@/lib/hooks';
 import { Badge, Button, Input, Skeleton } from '@/components/ui';
 import { EmptyState, FaceThumb, PageHeader } from '@/components/common';
 
@@ -100,6 +100,12 @@ export function PersonPage() {
     const { id } = useParams();
     const personId = Number(id);
     const { data: person, isLoading, refetch } = usePerson(Number.isFinite(personId) ? personId : null);
+    const {
+        data: facePages,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = usePersonFaces(Number.isFinite(personId) ? personId : null);
     const [name, setName] = useState('');
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -126,6 +132,7 @@ export function PersonPage() {
     }
 
     const maxYear = Math.max(1, ...person.timeline.map((item) => item.count));
+    const faces = facePages?.pages.flatMap((page) => page.items) ?? person.faces;
 
     async function rename() {
         if (!name.trim() || !person) return;
@@ -234,19 +241,36 @@ export function PersonPage() {
                     </section>
 
                     <section>
-                        <div className='mb-3 flex items-center justify-between'>
-                            <h2 className='text-sm font-semibold'>Faces</h2>
+                        <div className='mb-3 flex items-center justify-between gap-3'>
+                            <div className='flex items-baseline gap-2'>
+                                <h2 className='text-sm font-semibold'>Faces</h2>
+                                <span className='text-[11px] tabular-nums text-muted'>
+                                    {faces.length.toLocaleString()} of {person.faceCount.toLocaleString()}
+                                </span>
+                            </div>
                             <Button asChild variant='ghost' size='sm'>
                                 <Link to={`/?person=${person.id}`}>View photos</Link>
                             </Button>
                         </div>
                         <div className='grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8'>
-                            {person.faces.map((face) => (
+                            {faces.map((face) => (
                                 <Link key={face.id} to={`/?photo=${face.imageId}&face=${face.id}`}>
-                                    <FaceThumb faceId={face.id} person={face.person} className='aspect-square w-full' />
+                                    <FaceThumb faceId={face.id} plain className='aspect-square w-full' />
                                 </Link>
                             ))}
                         </div>
+                        {hasNextPage && (
+                            <div className='mt-4 flex justify-center'>
+                                <Button
+                                    variant='secondary'
+                                    size='sm'
+                                    onClick={() => void fetchNextPage()}
+                                    disabled={isFetchingNextPage}
+                                >
+                                    {isFetchingNextPage ? 'Loading…' : 'Show more faces'}
+                                </Button>
+                            </div>
+                        )}
                     </section>
                 </div>
             </div>

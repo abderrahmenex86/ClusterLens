@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { api } from './api';
@@ -38,6 +38,21 @@ export function usePerson(id: number | null) {
     return useQuery({
         queryKey: ['person', id],
         queryFn: () => api.person(id as number),
+        enabled: id !== null,
+    });
+}
+
+const PERSON_FACES_PAGE_SIZE = 500;
+
+export function usePersonFaces(id: number | null) {
+    return useInfiniteQuery({
+        queryKey: ['person-faces', id],
+        queryFn: ({ pageParam }) => api.personFaces(id as number, PERSON_FACES_PAGE_SIZE, pageParam),
+        initialPageParam: 0,
+        getNextPageParam: (lastPage, allPages) => {
+            const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0);
+            return loaded < lastPage.total ? loaded : undefined;
+        },
         enabled: id !== null,
     });
 }

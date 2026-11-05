@@ -115,7 +115,7 @@ def _face_row(row: Any, include_person: bool = True) -> dict[str, Any]:
         "bboxSource": row["bbox_source"],
         "ignored": row["ignored_at"] is not None,
         "person": person,
-        "thumbUrl": f"/api/faces/{int(row['id'])}/thumb",
+        "thumbUrl": f"/api/faces/{int(row['id'])}/thumb?v=20261105",
     }
 
 
@@ -130,7 +130,7 @@ def _person_row(row: Any, database) -> dict[str, Any]:
     if cover is None:
         cover_row = database.query_one(
             "SELECT id FROM faces WHERE person_id = ? AND ignored_at IS NULL "
-            "ORDER BY det_score DESC LIMIT 1",
+            "ORDER BY (quality IS NULL) ASC, quality DESC, det_score DESC LIMIT 1",
             (person_id,),
         )
         cover = cover_row["id"] if cover_row else None
@@ -140,7 +140,7 @@ def _person_row(row: Any, database) -> dict[str, Any]:
         "faceCount": int(counts["faces"] or 0) if counts else 0,
         "imageCount": int(counts["images"] or 0) if counts else 0,
         "coverFaceId": cover,
-        "coverUrl": f"/api/faces/{cover}/thumb" if cover else None,
+        "coverUrl": f"/api/faces/{cover}/thumb?v=20261105" if cover else None,
         "createdAt": row["created_at"],
     }
 
@@ -180,8 +180,8 @@ def _image_row(row: Any, database, base_url: str = "") -> dict[str, Any]:
     primary = next((s["label"] for s in scenes if s["is_primary"]), None)
     return {
         "id": image_id,
-        "thumbnailUrl": f"/api/images/{image_id}/preview?size=256",
-        "previewUrl": f"/api/images/{image_id}/preview?size=1024",
+        "thumbnailUrl": f"/api/images/{image_id}/preview?size=256&v=20261105",
+        "previewUrl": f"/api/images/{image_id}/preview?size=1024&v=20261105",
         "width": row["width"],
         "height": row["height"],
         "dateTaken": row["date_taken"],
@@ -924,7 +924,7 @@ def image_preview(image_id: int, request: Request, size: int = 1024):
 
     if not path.exists():
         raise HTTPException(404, "Preview not ready")
-    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "public, max-age=86400"})
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/images/{image_id}/file")
@@ -948,7 +948,7 @@ def face_thumb(face_id: int, request: Request):
     path = settings(request).faces_dir / f"{face_id}.webp"
     if not path.exists():
         raise HTTPException(404, "Face thumbnail not ready")
-    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "public, max-age=86400"})
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "no-cache"})
 
 
 @router.post("/images/{image_id}/faces")
@@ -1187,14 +1187,27 @@ def split_person(person_id: int, payload: PersonSplit, request: Request):
 
 
 @router.get("/people/{person_id}/faces")
-def person_faces(person_id: int, request: Request, limit: int = Query(100, ge=1, le=500)):
+def person_faces(
+    person_id: int,
+    request: Request,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
     database = db(request)
+    total = int(
+        database.scalar(
+            "SELECT COUNT(*) FROM faces WHERE person_id = ? AND ignored_at IS NULL",
+            (person_id,),
+        )
+        or 0
+    )
     rows = database.query(
         "SELECT f.*, p.name AS person_name FROM faces f LEFT JOIN people p ON p.id = f.person_id "
-        "WHERE f.person_id = ? AND f.ignored_at IS NULL ORDER BY f.det_score DESC LIMIT ?",
-        (person_id, limit),
+        "WHERE f.person_id = ? AND f.ignored_at IS NULL "
+        "ORDER BY f.det_score DESC, f.id DESC LIMIT ? OFFSET ?",
+        (person_id, limit, offset),
     )
-    return {"items": [_face_row(row, include_person=True) for row in rows]}
+    return {"items": [_face_row(row, include_person=True) for row in rows], "total": total}
 
 
 def _maybe_enqueue_training(database) -> None:

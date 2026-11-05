@@ -50,6 +50,8 @@ export function ReviewPage() {
             queryClient.invalidateQueries({ queryKey: ['review-faces'] }),
             queryClient.invalidateQueries({ queryKey: ['stats'] }),
             queryClient.invalidateQueries({ queryKey: ['people'] }),
+            queryClient.invalidateQueries({ queryKey: ['person'] }),
+            queryClient.invalidateQueries({ queryKey: ['person-faces'] }),
             queryClient.invalidateQueries({ queryKey: ['classifier'] }),
         ]);
     }
@@ -248,7 +250,7 @@ export function ReviewPage() {
                                         className='aspect-square overflow-hidden bg-surface-strong transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent'
                                         aria-label='Inspect this face in its photo'
                                     >
-                                        <img src={`/api/faces/${sample.id}/thumb`} alt='' className='h-full w-full object-cover' />
+                                        <img src={`/api/faces/${sample.id}/thumb?v=20261105`} alt='' className='h-full w-full object-cover' />
                                     </button>
                                 ))}
                             </div>

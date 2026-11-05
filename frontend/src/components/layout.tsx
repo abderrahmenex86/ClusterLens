@@ -432,7 +432,7 @@ export function ActivitySheet({
                         Indexing, analysis, classifier training, and exports. Jobs resume after a restart.
                     </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className='max-h-[65vh] px-6 pb-6'>
+                <ScrollArea type='always' className='h-[65vh] px-6 pb-6'>
                     <div className='space-y-4'>
                         <div>
                             <p className='mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted'>In progress</p>
