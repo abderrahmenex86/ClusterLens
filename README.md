@@ -2,7 +2,7 @@
 
 A local-first smart gallery for a recovered photo archive. It reads the EXIF that survived, reconstructs the people and documents from the pixels, and keeps every source folder read-only.
 
-![People page with CelebA identity cards and face counts; the faces are blurred](docs/screenshots/people-100.png)
+![People page with CelebA identity cards and face counts; the faces are blurred](docs/screenshots/people-preview.png)
 
 ## What it does
 
@@ -12,7 +12,7 @@ A local-first smart gallery for a recovered photo archive. It reads the EXIF tha
 - Exports full-photo copies into `People/<name>/`, `People/Unsorted/`, `Documents/<type>/`, and `Unknown/`, with a manifest for every copy.
 - Keeps indexing progress, failures, and job history in a bottom-left status dock, so the gallery stays edge-to-edge.
 
-![Documents view with a receipt, a code screenshot, an intake form, and a whiteboard](docs/screenshots/documents-100.png)
+![Documents view with receipts, invoices, forms, notes, a book page, and a whiteboard](docs/screenshots/documents-preview.png)
 
 ## Run it
 
@@ -72,7 +72,7 @@ No vector database, cloud queue, or hosted demo. SQLite in WAL mode, two backgro
 
 ## Preview data
 
-The screenshots use a 104-photo toy library: five photos for each of twenty CelebA identities, plus four documents. Eighteen identities are confirmed and two remain as review proposals. The source images are not committed. CelebA is used locally under its non-commercial research terms, and the faces are blurred in the screenshots. The receipt, intake form, and code screenshot were generated for the demo; the whiteboard is a CC BY-SA photo. Dataset links, terms, and credits are in [docs/sample-data.md](docs/sample-data.md).
+The screenshots use a 112-photo toy library: five photos for each of twenty CelebA identities, plus eleven documents and one event ticket. Eighteen identities are confirmed and two remain as review proposals. The source images are not committed. CelebA is used locally under its non-commercial research terms, and the faces are blurred in the screenshots. The receipts, invoices, forms, notes, and ticket were generated for the demo; the whiteboard is a CC BY-SA photo. Dataset links, terms, and credits are in [docs/sample-data.md](docs/sample-data.md).
 
 ## Stack
 
