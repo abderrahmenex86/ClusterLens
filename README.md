@@ -4,8 +4,6 @@ ClusterLens is a local-first gallery for a recovered photo archive. I built it f
 
 ![People page with CelebA identity cards, face counts, and blurred faces; the sidebar shows 18 people](docs/screenshots/people-preview.png)
 
-_The screenshots use a 112-photo demo library built from 20 CelebA identities and synthetic documents, so no personal photos appear. Faces are blurred and the source images are not committed._
-
 ## Table of contents
 
 - [Why this exists](#why-this-exists)
